@@ -43,14 +43,14 @@ namespace BizHawk.Client.EmuHawk
 			{
 				if (frame == Emulator.Frame + 1) // We are at the end of the movie and advancing one frame, therefore we are recording, simply emulate a frame
 				{
-					bool wasPaused = GlobalWin.MainForm.EmulatorPaused;
-					GlobalWin.MainForm.FrameAdvance();
+					bool wasPaused = Mainform.EmulatorPaused;
+					Mainform.FrameAdvance();
 					if (!wasPaused)
-						GlobalWin.MainForm.UnpauseEmulator();
+						Mainform.UnpauseEmulator();
 				}
 				else
 				{
-					CurrentTasMovie.SwitchToPlay();
+					TastudioPlayMode();
 
 					int lastState = CurrentTasMovie.TasStateManager.GetStateClosestToFrame(frame).Key; // Simply getting the last state doesn't work if that state is the frame. [dispaly isn't saved in the state, need to emulate to frame]
 					if (lastState > Emulator.Frame)
@@ -112,7 +112,7 @@ namespace BizHawk.Client.EmuHawk
 
 		private void MaybeFollowCursor()
 		{
-			if (TasPlaybackBox.FollowCursor && !mouseButtonHeld)
+			if (TasPlaybackBox.FollowCursor)
 				SetVisibleIndex();
 		}
 	}

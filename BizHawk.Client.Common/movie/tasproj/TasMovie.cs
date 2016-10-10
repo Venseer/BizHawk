@@ -85,6 +85,7 @@ namespace BizHawk.Client.Common
 		public TasMovieMarkerList Markers { get; set; }
 		public bool BindMarkersToInput { get; set; }
 		public bool UseInputCache { get; set; }
+		public bool LastPositionStable = true;
 		public string NewBranchText = "";
 		public int CurrentBranch { get; set; }
 		public int BranchCount { get { return Branches.Count; } }
@@ -218,6 +219,11 @@ namespace BizHawk.Client.Common
 			_mode = Moviemode.Play;
 		}
 
+		public override void SwitchToRecord()
+		{
+			_mode = Moviemode.Record;
+		}
+
 		/// <summary>
 		/// Removes lag log and greenzone after this frame
 		/// </summary>
@@ -305,12 +311,18 @@ namespace BizHawk.Client.Common
 
 		public void GreenzoneCurrentFrame()
 		{
-				LagLog[Global.Emulator.Frame] = Global.Emulator.AsInputPollable().IsLagFrame;
+			if (Global.Emulator.Frame > LastValidFrame)
+			{
+				// emulated a new frame, current editing segment may change now. taseditor logic
+				LastPositionStable = false;
+			}
 
-				if (!StateManager.HasState(Global.Emulator.Frame))
-				{
-					StateManager.Capture();
-				}
+			LagLog[Global.Emulator.Frame] = Global.Emulator.AsInputPollable().IsLagFrame;
+
+			if (!StateManager.HasState(Global.Emulator.Frame))
+			{
+				StateManager.Capture();
+			}
 		}
 
 		public void ClearLagLog()

@@ -16,12 +16,15 @@ namespace BizHawk.Client.Common
 		public override void RecordFrame(int frame, IController source)
 		{
 			if (frame != 0)
-				ChangeLog.AddGeneralUndo(frame, frame, "Record Frame: " + frame);
+				ChangeLog.AddGeneralUndo(frame -1, frame -1, "Record Frame: " + frame);
 
 			base.RecordFrame(frame, source);
 
 			LagLog.RemoveFrom(frame);
 			LagLog[frame] = Global.Emulator.AsInputPollable().IsLagFrame;
+
+			if (IsRecording)
+				StateManager.Invalidate(frame + 1);
 
 			if (frame != 0)
 				ChangeLog.SetGeneralRedo();
@@ -57,6 +60,7 @@ namespace BizHawk.Client.Common
 
 			ChangeLog.SetGeneralRedo();
 		}
+
 		public void SetFrame(int frame, string source)
 		{
 			ChangeLog.AddGeneralUndo(frame, frame, "Set Frame At: " + frame);
@@ -109,6 +113,7 @@ namespace BizHawk.Client.Common
 			if (endBatch)
 				ChangeLog.EndBatch();
 		}
+
 		public void RemoveFrames(int[] frames)
 		{
 			if (frames.Any())
@@ -149,7 +154,8 @@ namespace BizHawk.Client.Common
 					ChangeLog.EndBatch();
 			}
 		}
-		public void RemoveFrames(int removeStart, int removeUpTo)
+
+		public void RemoveFrames(int removeStart, int removeUpTo, bool fromHistory = false)
 		{
 			bool endBatch = ChangeLog.BeginNewBatch("Remove Frames: " + removeStart + "-" + removeUpTo, true);
 			ChangeLog.AddGeneralUndo(removeStart, InputLogLength - 1);
@@ -170,7 +176,7 @@ namespace BizHawk.Client.Common
 						if (m.Frame < removeUpTo)
 							Markers.Remove(m);
 						else
-							Markers.Move(m.Frame, m.Frame - (removeUpTo - removeStart));
+							Markers.Move(m.Frame, m.Frame - (removeUpTo - removeStart), fromHistory);
 					}
 				}
 				ChangeLog.IsRecording = wasRecording;
@@ -213,6 +219,7 @@ namespace BizHawk.Client.Common
 			if (endBatch)
 				ChangeLog.EndBatch();
 		}
+
 		public void InsertInput(int frame, IEnumerable<string> inputLog)
 		{
 			bool endBatch = ChangeLog.BeginNewBatch("Insert Frame: " + frame, true);
@@ -242,6 +249,7 @@ namespace BizHawk.Client.Common
 			if (endBatch)
 				ChangeLog.EndBatch();
 		}
+
 		public void InsertInput(int frame, IEnumerable<IController> inputStates)
 		{
 			// ChangeLog is done in the InsertInput call.
@@ -260,10 +268,15 @@ namespace BizHawk.Client.Common
 
 		public void CopyOverInput(int frame, IEnumerable<IController> inputStates)
 		{
-			ChangeLog.AddGeneralUndo(frame, frame + inputStates.Count() - 1, "Copy Over Input: " + frame);
-
+			ChangeLog.BeginNewBatch("Copy Over Input: " + frame);
 			var lg = LogGeneratorInstance();
 			var states = inputStates.ToList();
+
+			if (_log.Count < states.Count + frame)
+				ExtendMovieForEdit(states.Count + frame - _log.Count);
+
+			ChangeLog.AddGeneralUndo(frame, frame + inputStates.Count() - 1, "Copy Over Input: " + frame);
+
 			for (int i = 0; i < states.Count; i++)
 			{
 				if (_log.Count <= frame + i)
@@ -272,19 +285,23 @@ namespace BizHawk.Client.Common
 				_log[frame + i] = lg.GenerateLogEntry();
 			}
 
+			ChangeLog.EndBatch();
 			Changes = true;
 			InvalidateAfter(frame);
 
 			ChangeLog.SetGeneralRedo();
 		}
 
-		public void InsertEmptyFrame(int frame, int count = 1)
+		public void InsertEmptyFrame(int frame, int count = 1, bool fromHistory = false)
 		{
 			bool endBatch = ChangeLog.BeginNewBatch("Insert Empty Frame: " + frame, true);
 			ChangeLog.AddGeneralUndo(frame, InputLogLength + count - 1);
 
 			var lg = LogGeneratorInstance();
 			lg.SetSource(Global.MovieSession.MovieControllerInstance());
+
+			if (frame > _log.Count())
+				frame = _log.Count();
 
 			for (int i = 0; i < count; i++)
 				_log.Insert(frame, lg.EmptyEntry);
@@ -299,7 +316,7 @@ namespace BizHawk.Client.Common
 					for (int i = firstIndex; i < Markers.Count; i++)
 					{
 						TasMovieMarker m = Markers.ElementAt(i);
-						Markers.Move(m.Frame, m.Frame + count);
+						Markers.Move(m.Frame, m.Frame + count, fromHistory);
 					}
 				}
 				ChangeLog.IsRecording = wasRecording;
@@ -338,6 +355,7 @@ namespace BizHawk.Client.Common
 			if (Global.Emulator.Frame < _log.Count) // Don't stay in recording mode? Fixes TAStudio recording after paint inserting.
 				this.SwitchToPlay();
 		}
+
 		public void ToggleBoolState(int frame, string buttonName)
 		{
 			if (frame >= _log.Count) // Insert blank frames up to this point
@@ -375,6 +393,7 @@ namespace BizHawk.Client.Common
 				ChangeLog.AddBoolToggle(frame, buttonName, old, "Set " + buttonName + "(" + (val ? "On" : "Off") + "): " + frame);
 			}
 		}
+
 		public void SetBoolStates(int frame, int count, string buttonName, bool val)
 		{
 			if (frame + count >= _log.Count) // Insert blank frames up to this point
@@ -426,6 +445,7 @@ namespace BizHawk.Client.Common
 				ChangeLog.AddFloatChange(frame, buttonName, old, val, "Set " + buttonName + "(" + val + "): " + frame);
 			}
 		}
+
 		public void SetFloatStates(int frame, int count, string buttonName, float val)
 		{
 			if (frame + count >= _log.Count) // Insert blank frames up to this point

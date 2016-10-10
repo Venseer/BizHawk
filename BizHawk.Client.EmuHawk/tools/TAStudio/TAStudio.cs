@@ -50,7 +50,6 @@ namespace BizHawk.Client.EmuHawk
 		}
 
 		public bool IsInMenuLoop { get; private set; }
-		public bool IgnoreSeekFrame { get; set; }
 
 		[ConfigPersist]
 		public TAStudioSettings Settings { get; set; }
@@ -68,7 +67,7 @@ namespace BizHawk.Client.EmuHawk
 				FollowCursorScrollMethod = "near";
 				BranchCellHoverInterval = 1;
 				SeekingCutoffInterval = 2; // unused, relying on VisibleRows is smarter
-				AutoRestoreOnMouseUpOnly = true;
+				AutoRestoreOnMouseUpOnly = false; // default to taseditor way, must be harmless since we suspend rerecord counting while drawing
 				AutosaveInterval = 120000;
 				AutosaveAsBk2 = false;
 				AutosaveAsBackupFile = false;
@@ -110,6 +109,18 @@ namespace BizHawk.Client.EmuHawk
 		{
 			get { return Global.MovieSession.Movie as TasMovie; }
 		}
+
+		public MainForm Mainform
+		{
+			get { return GlobalWin.MainForm; }
+		}
+
+		/// <summary>
+		/// Separates "restore last position" logic from seeking caused by navigation.
+		/// TASEditor never kills LastPositionFrame, and it only pauses on it,
+		/// if it hasn't been greenzoned beforehand and middle mouse button was pressed.
+		/// </summary>
+		public int LastPositionFrame { get; set; }
 
 		#region "Initializing"
 
@@ -158,7 +169,7 @@ namespace BizHawk.Client.EmuHawk
 			TasView.PointedCellChanged += TasView_PointedCellChanged;
 			TasView.MultiSelect = true;
 			TasView.MaxCharactersInHorizontal = 1;
-			IgnoreSeekFrame = false;
+			LastPositionFrame = -1;
 		}
 
 		private void AutosaveTimerEventProcessor(object sender, EventArgs e)
@@ -244,7 +255,7 @@ namespace BizHawk.Client.EmuHawk
 					}
 
 					int diff = Global.Emulator.Frame - _seekStartFrame.Value;
-					int unit = GlobalWin.MainForm.PauseOnFrame.Value - _seekStartFrame.Value;
+					int unit = Mainform.PauseOnFrame.Value - _seekStartFrame.Value;
 					double progress = 0;
 
 					if (diff != 0 && unit != 0)
@@ -425,16 +436,15 @@ namespace BizHawk.Client.EmuHawk
 			foreach (var kvp in columnNames)
 			{
 				// N64 hack for now, for fake analog
-				if (Emulator.SystemId == "N64")
-				{
-					if (kvp.Key.Contains("A Up") || kvp.Key.Contains("A Down") ||
-					kvp.Key.Contains("A Left") || kvp.Key.Contains("A Right"))
-					{
-						continue;
-					}
-				}
-
-				AddColumn(kvp.Key, kvp.Value, 20 * kvp.Value.Length);
+				//if (Emulator.SystemId == "N64")
+				//{
+				//	if (kvp.Key.Contains("A Up") || kvp.Key.Contains("A Down") ||
+				//	kvp.Key.Contains("A Left") || kvp.Key.Contains("A Right"))
+				//	{
+				//		continue;
+				//	}
+				//}
+				AddColumn(kvp.Key, kvp.Value, (kvp.Value.Length * 6) + 14);
 			}
 
 			var columnsToHide = TasView.AllColumns
@@ -443,7 +453,10 @@ namespace BizHawk.Client.EmuHawk
 					c.Name == "Power" ||
 					c.Name == "Reset" ||
 					c.Name.StartsWith("Tilt") ||
-					c.Name == "Light Sensor"
+					c.Name == "Light Sensor" ||
+					c.Name == "Open" ||
+					c.Name == "Close" ||
+					c.Name == "Disc Select"
 				);
 
 			foreach (var column in columnsToHide)
@@ -451,7 +464,7 @@ namespace BizHawk.Client.EmuHawk
 				column.Visible = false;
 			}
 
-			TasView.AllColumns.ColumnsChanged();			
+			TasView.AllColumns.ColumnsChanged();
 
 			// Patterns
 			int bStart = 0;
@@ -501,16 +514,16 @@ namespace BizHawk.Client.EmuHawk
 
 		private void EngageTastudio()
 		{
-			GlobalWin.MainForm.PauseOnFrame = null;
+			Mainform.PauseOnFrame = null;
 			GlobalWin.OSD.AddMessage("TAStudio engaged");
 			SetTasMovieCallbacks();
 			SetTextProperty();
-			GlobalWin.MainForm.PauseEmulator();
-			GlobalWin.MainForm.RelinquishControl(this);
+			Mainform.PauseEmulator();
+			Mainform.RelinquishControl(this);
 			_originalEndAction = Global.Config.MovieEndAction;
-			GlobalWin.MainForm.ClearRewindData();
+			Mainform.ClearRewindData();
 			Global.Config.MovieEndAction = MovieEndAction.Record;
-			GlobalWin.MainForm.SetMainformMovieInfo();
+			Mainform.SetMainformMovieInfo();
 			Global.MovieSession.ReadOnly = true;
 		}
 
@@ -637,13 +650,15 @@ namespace BizHawk.Client.EmuHawk
 
 			return true;
 		}
+
 		private bool StartNewMovieWrapper(bool record, IMovie movie = null)
 		{
 			_initializing = true;
 			if (movie == null)
 				movie = CurrentTasMovie;
 			SetTasMovieCallbacks(movie as TasMovie);
-			bool result = GlobalWin.MainForm.StartNewMovie(movie, record);
+			bool result = Mainform.StartNewMovie(movie, record);
+			TastudioPlayMode();
 			_initializing = false;
 
 			return result;
@@ -654,6 +669,7 @@ namespace BizHawk.Client.EmuHawk
 			if (AskSaveChanges())
 				LoadFile(new FileInfo(path));
 		}
+
 		private void DummyLoadMacro(string path)
 		{
 			if (!TasView.AnyRowsSelected)
@@ -680,20 +696,30 @@ namespace BizHawk.Client.EmuHawk
 
 		#endregion
 
-		private void TastudioToStopMovie()
+		private void TastudioPlayMode()
+		{
+			TasPlaybackBox.RecordingMode = false;
+		}
+
+		private void TastudioRecordMode()
+		{
+			TasPlaybackBox.RecordingMode = true;
+		}
+
+		private void TastudioStopMovie()
 		{
 			Global.MovieSession.StopMovie(false);
-			GlobalWin.MainForm.SetMainformMovieInfo();
+			Mainform.SetMainformMovieInfo();
 		}
 
 		private void DisengageTastudio()
 		{
-			GlobalWin.MainForm.PauseOnFrame = null;
+			Mainform.PauseOnFrame = null;
 			GlobalWin.OSD.AddMessage("TAStudio disengaged");
 			Global.MovieSession.Movie = MovieService.DefaultInstance;
-			GlobalWin.MainForm.TakeBackControl();
+			Mainform.TakeBackControl();
 			Global.Config.MovieEndAction = _originalEndAction;
-			GlobalWin.MainForm.SetMainformMovieInfo();
+			Mainform.SetMainformMovieInfo();
 			// Do not keep TAStudio's disk save states.
 			//if (Directory.Exists(statesPath)) Directory.Delete(statesPath, true);
 			//TODO - do we need to dispose something here instead?
@@ -777,13 +803,12 @@ namespace BizHawk.Client.EmuHawk
 			}
 			else
 			{
-				// feos: if we disable autorestore, we shouldn't ever get it paused
-				// moreover, this function is only called if we *were* paused, so the check makes no sense
-				//if (_autoRestorePaused.HasValue && !_autoRestorePaused.Value)
-				//	GlobalWin.MainForm.UnpauseEmulator();
+				if (_autoRestorePaused.HasValue && !_autoRestorePaused.Value)
+				{
+					// this happens when we're holding the left button while unpaused - view scrolls down, new input gets drawn, seek pauses
+					Mainform.UnpauseEmulator();
+				}
 				_autoRestorePaused = null;
-				// feos: seek gets triggered by the previous function, so we don't wanna kill the seek frame before it ends
-				//GlobalWin.MainForm.PauseOnFrame = null; // Cancel seek to autorestore point
 			}
 			_autoRestoreFrame = null;
 		}
@@ -793,7 +818,8 @@ namespace BizHawk.Client.EmuHawk
 			if (frame == Emulator.Frame)
 				return;
 
-			CurrentTasMovie.SwitchToPlay();
+			_wasRecording = CurrentTasMovie.IsRecording || _wasRecording;
+			TastudioPlayMode();
 			KeyValuePair<int, byte[]> closestState = CurrentTasMovie.TasStateManager.GetStateClosestToFrame(frame);
 			if (closestState.Value != null && (frame < Emulator.Frame || closestState.Key > Emulator.Frame))
 			{
@@ -803,7 +829,7 @@ namespace BizHawk.Client.EmuHawk
 			// frame == Emualtor.Frame when frame == 0
 			if (frame > Emulator.Frame)
 			{
-				if (GlobalWin.MainForm.EmulatorPaused || GlobalWin.MainForm.IsSeeking) // make seek frame keep up with emulation on fast scrolls
+				if (Mainform.EmulatorPaused || Mainform.IsSeeking) // make seek frame keep up with emulation on fast scrolls
 				{
 					StartSeeking(frame);
 				}
@@ -845,7 +871,7 @@ namespace BizHawk.Client.EmuHawk
 
 		public void TogglePause()
 		{
-			GlobalWin.MainForm.TogglePause();
+			Mainform.TogglePause();
 		}
 
 		private void SetSplicer()
@@ -893,10 +919,11 @@ namespace BizHawk.Client.EmuHawk
 				return;
 
 			_exiting = true;
+
 			if (AskSaveChanges())
 			{
 				WantsToControlStopMovie = false;
-				GlobalWin.MainForm.StopMovie(saveChanges: false);
+				TastudioStopMovie();
 				DisengageTastudio();
 			}
 			else

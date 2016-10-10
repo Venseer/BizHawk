@@ -45,11 +45,18 @@ namespace BizHawk.Client.EmuHawk
 			BookMarkControl.SelectBranchExternal(true);
 		}
 
-		public bool WantsToControlReadOnly { get { return false; } }
+		public bool WantsToControlReadOnly { get { return true; } }
 
 		public void ToggleReadOnly()
 		{
-			GlobalWin.OSD.AddMessage("TAStudio does not allow manual readonly toggle");
+			if (CurrentTasMovie.IsPlaying)
+			{
+				TastudioRecordMode();
+			}
+			else if (CurrentTasMovie.IsRecording)
+			{
+				TastudioPlayMode();
+			}
 		}
 
 		public bool WantsToControlStopMovie { get; private set; }
@@ -71,7 +78,24 @@ namespace BizHawk.Client.EmuHawk
 
 		public bool Rewind()
 		{
-			GoToPreviousFrame(); // todo: behave as normal rewind in differentiating between hitting rewind once and holding it.
+			// copypasted from TasView_MouseWheel(), just without notch logic
+			if (Mainform.IsSeeking)
+			{
+				Mainform.PauseOnFrame--;
+				// that's a weird condition here, but for whatever reason it works best
+				if (Emulator.Frame >= Mainform.PauseOnFrame)
+				{
+					Mainform.PauseEmulator();
+					Mainform.PauseOnFrame = null;
+					StopSeeking();
+					GoToPreviousFrame();
+				}
+				RefreshDialog();
+			}
+			else
+			{
+				GoToPreviousFrame();
+			}
 			return true;
 		}
 

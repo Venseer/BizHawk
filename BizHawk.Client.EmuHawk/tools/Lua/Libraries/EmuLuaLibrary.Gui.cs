@@ -194,7 +194,7 @@ namespace BizHawk.Client.EmuHawk
 
 		[LuaMethodAttributes(
 			"defaultPixelFont",
-			"Sets the default font to use in gui.pixelText(), \"gens\" by default"
+			"Sets the default font to use in gui.pixelText(). Two font families are available, \"fceux\" and \"gens\" (or  \"0\" and \"1\" respectively), \"gens\" is used by default"
 		)]
 		public void SetDefaultTextBackground(string fontfamily)
 		{
@@ -584,8 +584,12 @@ namespace BizHawk.Client.EmuHawk
 						}
 					}
 
+					StringFormat f = new StringFormat(StringFormat.GenericTypographic)
+					{
+						FormatFlags = StringFormatFlags.MeasureTrailingSpaces
+					};
 					var font = new Font(family, fontsize ?? 12, fstyle, GraphicsUnit.Pixel);
-					Size sizeOfText = g.MeasureString(message, font).ToSize();
+					Size sizeOfText = g.MeasureString(message, font, 0, f).ToSize();
 					Rectangle rect = new Rectangle(new Point(x, y), sizeOfText);
 					g.FillRectangle(GetBrush(backcolor ?? DefaultTextBackground.Value), rect);
 					g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.SingleBitPerPixelGridFit;
@@ -600,7 +604,7 @@ namespace BizHawk.Client.EmuHawk
 
 		[LuaMethodAttributes(
 			"pixelText",
-			"Draws the given message in the emulator screen space (like all draw functions) at the given x,y coordinates and the given color. The default color is white. A fontfamily can be specified and is monospace generic if none is specified (font family options are the same as the .NET FontFamily class. The fontsize default is 12. The default font style. Font style options are regular, bold, italic, strikethrough, underline"
+			"Draws the given message in the emulator screen space (like all draw functions) at the given x,y coordinates and the given color. The default color is white. Two font families are available, \"fceux\" and \"gens\" (or  \"0\" and \"1\" respectively), both are monospace and have the same size as in the emulaors they've been taken from. If no font family is specified, it uses \"gens\" font, unless that's overridden via gui.defaultPixelFont()"
 		)]
 		public void DrawText(
 			int x,
@@ -636,8 +640,12 @@ namespace BizHawk.Client.EmuHawk
 								return;
 						}
 					}
+					StringFormat f = new StringFormat(StringFormat.GenericTypographic)
+					{
+						FormatFlags = StringFormatFlags.MeasureTrailingSpaces
+					};
 					var font = new Font(GlobalWin.DisplayManager.CustomFonts.Families[index], 8, FontStyle.Regular, GraphicsUnit.Pixel);
-					Size sizeOfText = g.MeasureString(message, font, 0, StringFormat.GenericTypographic).ToSize();
+					Size sizeOfText = g.MeasureString(message, font, 0, f).ToSize();
 					Rectangle rect = new Rectangle(new Point(x, y), sizeOfText + new Size(1, 0));
 					g.FillRectangle(GetBrush(backcolor ?? DefaultTextBackground.Value), rect);
 					g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.SingleBitPerPixelGridFit;

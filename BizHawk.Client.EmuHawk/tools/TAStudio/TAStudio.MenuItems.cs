@@ -41,7 +41,7 @@ namespace BizHawk.Client.EmuHawk
 
 		private void NewTasMenuItem_Click(object sender, EventArgs e)
 		{
-			if (GlobalWin.MainForm.GameIsClosing)
+			if (Mainform.GameIsClosing)
 			{
 				Close();
 			}
@@ -109,6 +109,7 @@ namespace BizHawk.Client.EmuHawk
 		private void SaveAsTas(object sender, EventArgs e)
 		{
 			_autosaveTimer.Stop();
+			ClearLeftMouseStates();
 			var filename = CurrentTasMovie.Filename;
 			if (string.IsNullOrWhiteSpace(filename) || filename == DefaultTasProjName())
 			{
@@ -387,9 +388,50 @@ namespace BizHawk.Client.EmuHawk
 			// TODO: if highlighting 2 rows and pasting 3, only paste 2 of them
 			// FCEUX Taseditor does't do this, but I think it is the expected behavior in editor programs
 
-			var wasPaused = GlobalWin.MainForm.EmulatorPaused;
+			var wasPaused = Mainform.EmulatorPaused;
 
-			if (_tasClipboard.Any())
+			// copypaste from PasteInsertMenuItem_Click!
+			IDataObject data = Clipboard.GetDataObject();
+			if (data.GetDataPresent(DataFormats.StringFormat))
+			{
+				string input = (string)data.GetData(DataFormats.StringFormat);
+				if (!string.IsNullOrWhiteSpace(input))
+				{
+					string[] lines = input.Split('\n');
+					if (lines.Length > 0)
+					{
+						_tasClipboard.Clear();
+						for (int i = 0; i < lines.Length; i++)
+						{
+							var line = TasClipboardEntry.SetFromMnemonicStr(lines[i]);
+							if (line == null)
+								return;
+							else
+								_tasClipboard.Add(new TasClipboardEntry(i, line));
+						}
+
+						var needsToRollback = TasView.FirstSelectedIndex < Emulator.Frame;
+						CurrentTasMovie.CopyOverInput(TasView.FirstSelectedIndex.Value, _tasClipboard.Select(x => x.ControllerState));
+						if (needsToRollback)
+						{
+							GoToLastEmulatedFrameIfNecessary(TasView.FirstSelectedIndex.Value);
+							if (wasPaused)
+							{
+								DoAutoRestore();
+							}
+							else
+							{
+								Mainform.UnpauseEmulator();
+							}
+						}
+						else
+						{
+							RefreshDialog();
+						}
+					}
+				}
+			}
+			else if (_tasClipboard.Any())
 			{
 				var needsToRollback = TasView.FirstSelectedIndex < Emulator.Frame;
 
@@ -404,7 +446,7 @@ namespace BizHawk.Client.EmuHawk
 					}
 					else
 					{
-						GlobalWin.MainForm.UnpauseEmulator();
+						Mainform.UnpauseEmulator();
 					}
 				}
 				else
@@ -416,9 +458,50 @@ namespace BizHawk.Client.EmuHawk
 
 		private void PasteInsertMenuItem_Click(object sender, EventArgs e)
 		{
-			var wasPaused = GlobalWin.MainForm.EmulatorPaused;
+			var wasPaused = Mainform.EmulatorPaused;
 
-			if (_tasClipboard.Any())
+			// copypaste from PasteMenuItem_Click!
+			IDataObject data = Clipboard.GetDataObject();
+			if (data.GetDataPresent(DataFormats.StringFormat))
+			{
+				string input = (string)data.GetData(DataFormats.StringFormat);
+				if (!string.IsNullOrWhiteSpace(input))
+				{
+					string[] lines = input.Split('\n');
+					if (lines.Length > 0)
+					{
+						_tasClipboard.Clear();
+						for (int i = 0; i < lines.Length; i++)
+						{
+							var line = TasClipboardEntry.SetFromMnemonicStr(lines[i]);
+							if (line == null)
+								return;
+							else
+								_tasClipboard.Add(new TasClipboardEntry(i, line));
+						}
+
+						var needsToRollback = TasView.FirstSelectedIndex < Emulator.Frame;
+						CurrentTasMovie.InsertInput(TasView.FirstSelectedIndex.Value, _tasClipboard.Select(x => x.ControllerState));
+						if (needsToRollback)
+						{
+							GoToLastEmulatedFrameIfNecessary(TasView.FirstSelectedIndex.Value);
+							if (wasPaused)
+							{
+								DoAutoRestore();
+							}
+							else
+							{
+								Mainform.UnpauseEmulator();
+							}
+						}
+						else
+						{
+							RefreshDialog();
+						}
+					}
+				}
+			}
+			else if (_tasClipboard.Any())
 			{
 				var needsToRollback = TasView.FirstSelectedIndex < Emulator.Frame;
 
@@ -433,7 +516,7 @@ namespace BizHawk.Client.EmuHawk
 					}
 					else
 					{
-						GlobalWin.MainForm.UnpauseEmulator();
+						Mainform.UnpauseEmulator();
 					}
 				}
 				else
@@ -447,19 +530,20 @@ namespace BizHawk.Client.EmuHawk
 		{
 			if (TasView.AnyRowsSelected)
 			{
-				var wasPaused = GlobalWin.MainForm.EmulatorPaused;
+				var wasPaused = Mainform.EmulatorPaused;
 				var needsToRollback = TasView.FirstSelectedIndex < Emulator.Frame;
 				var rollBackFrame = TasView.FirstSelectedIndex.Value;
 
 				_tasClipboard.Clear();
 				var list = TasView.SelectedRows.ToArray();
 				var sb = new StringBuilder();
-				for (var i = 0; i < list.Length; i++)
+
+				foreach (var index in list) // copy of CopyMenuItem_Click()
 				{
-					var input = CurrentTasMovie.GetInputState(i);
+					var input = CurrentTasMovie.GetInputState(index);
 					if (input == null)
 						break;
-					_tasClipboard.Add(new TasClipboardEntry(list[i], input));
+					_tasClipboard.Add(new TasClipboardEntry(index, input));
 					var lg = CurrentTasMovie.LogGeneratorInstance();
 					lg.SetSource(input);
 					sb.AppendLine(lg.GenerateLogEntry());
@@ -479,7 +563,7 @@ namespace BizHawk.Client.EmuHawk
 					}
 					else
 					{
-						GlobalWin.MainForm.UnpauseEmulator();
+						Mainform.UnpauseEmulator();
 					}
 				}
 				else
@@ -493,7 +577,7 @@ namespace BizHawk.Client.EmuHawk
 		{
 			if (TasView.AnyRowsSelected)
 			{
-				bool wasPaused = GlobalWin.MainForm.EmulatorPaused;
+				bool wasPaused = Mainform.EmulatorPaused;
 				bool needsToRollback = !(TasView.FirstSelectedIndex > Emulator.Frame);
 				int rollBackFrame = TasView.FirstSelectedIndex.Value;
 
@@ -513,7 +597,7 @@ namespace BizHawk.Client.EmuHawk
 					}
 					else
 					{
-						GlobalWin.MainForm.UnpauseEmulator();
+						Mainform.UnpauseEmulator();
 					}
 				}
 				else
@@ -527,7 +611,7 @@ namespace BizHawk.Client.EmuHawk
 		{
 			if (TasView.AnyRowsSelected)
 			{
-				var wasPaused = GlobalWin.MainForm.EmulatorPaused;
+				var wasPaused = Mainform.EmulatorPaused;
 				var needsToRollback = TasView.FirstSelectedIndex < Emulator.Frame;
 				var rollBackFrame = TasView.FirstSelectedIndex.Value;
 				if (rollBackFrame >= CurrentTasMovie.InputLogLength)
@@ -548,7 +632,7 @@ namespace BizHawk.Client.EmuHawk
 					}
 					else
 					{
-						GlobalWin.MainForm.UnpauseEmulator();
+						Mainform.UnpauseEmulator();
 					}
 				}
 				else
@@ -562,7 +646,7 @@ namespace BizHawk.Client.EmuHawk
 		{
 			if (TasView.AnyRowsSelected)
 			{
-				var wasPaused = GlobalWin.MainForm.EmulatorPaused;
+				var wasPaused = Mainform.EmulatorPaused;
 				var framesToInsert = TasView.SelectedRows.ToList();
 				var insertionFrame = Math.Min(TasView.LastSelectedIndex.Value + 1, CurrentTasMovie.InputLogLength);
 				var needsToRollback = TasView.FirstSelectedIndex < Emulator.Frame;
@@ -582,7 +666,7 @@ namespace BizHawk.Client.EmuHawk
 					}
 					else
 					{
-						GlobalWin.MainForm.UnpauseEmulator();
+						Mainform.UnpauseEmulator();
 					}
 				}
 				else
@@ -594,7 +678,7 @@ namespace BizHawk.Client.EmuHawk
 
 		private void InsertFrameMenuItem_Click(object sender, EventArgs e)
 		{
-			var wasPaused = GlobalWin.MainForm.EmulatorPaused;
+			var wasPaused = Mainform.EmulatorPaused;
 			var insertionFrame = TasView.AnyRowsSelected ? TasView.FirstSelectedIndex.Value : 0;
 			var needsToRollback = TasView.FirstSelectedIndex < Emulator.Frame;
 
@@ -609,7 +693,7 @@ namespace BizHawk.Client.EmuHawk
 				}
 				else
 				{
-					GlobalWin.MainForm.UnpauseEmulator();
+					Mainform.UnpauseEmulator();
 				}
 			}
 			else
@@ -620,7 +704,7 @@ namespace BizHawk.Client.EmuHawk
 
 		private void InsertNumFramesMenuItem_Click(object sender, EventArgs e)
 		{
-			bool wasPaused = GlobalWin.MainForm.EmulatorPaused;
+			bool wasPaused = Mainform.EmulatorPaused;
 			int insertionFrame = TasView.AnyRowsSelected ? TasView.FirstSelectedIndex.Value : 0;
 			bool needsToRollback = TasView.FirstSelectedIndex < Emulator.Frame;
 
@@ -640,7 +724,7 @@ namespace BizHawk.Client.EmuHawk
 				}
 				else
 				{
-					GlobalWin.MainForm.UnpauseEmulator();
+					Mainform.UnpauseEmulator();
 				}
 			}
 			else
@@ -719,7 +803,7 @@ namespace BizHawk.Client.EmuHawk
 			int goToFrame = CurrentTasMovie.TasStateManager.LastEmulatedFrame;
 			do
 			{
-				GlobalWin.MainForm.FrameAdvance();
+				Mainform.FrameAdvance();
 
 				if (CurrentTasMovie.TasStateManager.HasState(Emulator.Frame))
 				{
@@ -935,7 +1019,7 @@ namespace BizHawk.Client.EmuHawk
 		{
 			new MovieHeaderEditor(CurrentTasMovie)
 			{
-				Owner = GlobalWin.MainForm,
+				Owner = Mainform,
 				Location = this.ChildPointToScreen(TasView)
 			}.Show();
 			UpdateChangesIndicator();
@@ -945,7 +1029,7 @@ namespace BizHawk.Client.EmuHawk
 		{
 			new StateHistorySettingsForm(CurrentTasMovie.TasStateManager.Settings)
 			{
-				Owner = GlobalWin.MainForm,
+				Owner = Mainform,
 				Location = this.ChildPointToScreen(TasView),
 				Statable = this.StatableEmulator
 			}.ShowDialog();
@@ -1174,8 +1258,8 @@ namespace BizHawk.Client.EmuHawk
 					}
 
 					CurrentTasMovie.FlagChanges();
+					TasView.AllColumns.ColumnsChanged();
 					RefreshTasView();
-
 				};
 
 				ColumnsSubMenu.DropDownItems.Add(item);
@@ -1230,13 +1314,13 @@ namespace BizHawk.Client.EmuHawk
 
 			StartFromNowSeparator.Visible =StartNewProjectFromNowMenuItem.Visible || StartANewProjectFromSaveRamMenuItem.Visible;
 			RemoveMarkersContextMenuItem.Enabled = CurrentTasMovie.Markers.Any(m => TasView.SelectedRows.Contains(m.Frame)); // Disable the option to remove markers if no markers are selected (FCEUX does this).
-			CancelSeekContextMenuItem.Enabled = GlobalWin.MainForm.PauseOnFrame.HasValue;
+			CancelSeekContextMenuItem.Enabled = Mainform.PauseOnFrame.HasValue;
 			BranchContextMenuItem.Visible = TasView.CurrentCell.RowIndex == Emulator.Frame;
 		}
 
 		private void CancelSeekContextMenuItem_Click(object sender, EventArgs e)
 		{
-			GlobalWin.MainForm.PauseOnFrame = null;
+			Mainform.PauseOnFrame = null;
 			RefreshTasView();
 		}
 
@@ -1254,7 +1338,7 @@ namespace BizHawk.Client.EmuHawk
 				TasMovie newProject = CurrentTasMovie.ConvertToSavestateAnchoredMovie(
 					index, (byte[])StatableEmulator.SaveStateBinary().Clone());
 
-				GlobalWin.MainForm.PauseEmulator();
+				Mainform.PauseEmulator();
 				LoadFile(new FileInfo(newProject.Filename), true);
 			}
 		}
@@ -1269,7 +1353,7 @@ namespace BizHawk.Client.EmuHawk
 				TasMovie newProject = CurrentTasMovie.ConvertToSaveRamAnchoredMovie(
 					SaveRamEmulator.CloneSaveRam());
 
-				GlobalWin.MainForm.PauseEmulator();
+				Mainform.PauseEmulator();
 				LoadFile(new FileInfo(newProject.Filename), true);
 			}
 		}

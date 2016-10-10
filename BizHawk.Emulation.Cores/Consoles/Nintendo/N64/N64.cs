@@ -55,10 +55,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.N64
 		{
 			ServiceProvider = new BasicServiceProvider(this);
 			InputCallbacks = new InputCallbackSystem();
-			MemoryCallbacks = new MemoryCallbackSystem
-			{
-				ExecuteCallbacksAvailable = false
-			};
+			_memorycallbacks.ActiveChanged += RefreshMemoryCallbacks;
 
 			int SaveType = 0;
 			if (game.OptionValue("SaveType") == "EEPROM_16K")
@@ -134,14 +131,27 @@ namespace BizHawk.Emulation.Cores.Nintendo.N64
 			_inputProvider = new N64Input(this.AsInputPollable(), api, comm, this._syncSettings.Controllers);
 			(ServiceProvider as BasicServiceProvider).Register<IVideoProvider>(_videoProvider);
 
-			string rsp = _syncSettings.Rsp == N64SyncSettings.RspType.Rsp_Hle ?
-				"mupen64plus-rsp-hle.dll" :
-				"mupen64plus-rsp-z64-hlevideo.dll";
+			string rsp;
+			switch (_syncSettings.Rsp)
+			{
+				default:
+				case N64SyncSettings.RspType.Rsp_Hle:
+					rsp = "mupen64plus-rsp-hle.dll";
+					break;
+				case N64SyncSettings.RspType.Rsp_Z64_hlevideo:
+					rsp = "mupen64plus-rsp-z64-hlevideo.dll";
+					break;
+				case N64SyncSettings.RspType.Rsp_cxd4:
+					rsp = "mupen64plus-rsp-cxd4.dll";
+					break;
+			}
 
 			api.AttachPlugin(mupen64plusApi.m64p_plugin_type.M64PLUGIN_RSP, rsp);
 
 			InitMemoryDomains();
 			RefreshMemoryCallbacks();
+			if (_syncSettings.Core != N64SyncSettings.CoreType.Dynarec)
+				ConnectTracer();
 
 			api.AsyncExecuteEmulator();
 
@@ -215,6 +225,17 @@ namespace BizHawk.Emulation.Cores.Nintendo.N64
 		public void FrameAdvance(bool render, bool rendersound)
 		{
 			IsVIFrame = false;
+
+			RefreshMemoryCallbacks();
+
+			if (Tracer != null && Tracer.Enabled)
+			{
+				api.setTraceCallback(_tracecb);
+			}
+			else
+			{
+				api.setTraceCallback(null);
+			}
 
 			_audioProvider.RenderSound = rendersound;
 

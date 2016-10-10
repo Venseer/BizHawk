@@ -23,6 +23,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.NES
 		public void LoadStateText(TextReader reader)
 		{
 			SyncState(Serializer.CreateTextReader(reader));
+			SetupMemoryDomains(); // resync the memory domains
 		}
 
 		public void SaveStateBinary(BinaryWriter bw)
@@ -33,6 +34,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.NES
 		public void LoadStateBinary(BinaryReader br)
 		{
 			SyncState(Serializer.CreateBinaryReader(br));
+			SetupMemoryDomains(); // resync the memory domains
 		}
 
 		public byte[] SaveStateBinary()
@@ -61,6 +63,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.NES
 			ser.Sync("cpu_step", ref cpu_step);
 			ser.Sync("cpu_stepcounter", ref cpu_stepcounter);
 			ser.Sync("cpu_deadcounter", ref cpu_deadcounter);
+			ser.Sync("keyboard", ref _iskeyboard);
 
 			//oam related
 			ser.Sync("Oam_Dma_Index", ref oam_dma_index);
