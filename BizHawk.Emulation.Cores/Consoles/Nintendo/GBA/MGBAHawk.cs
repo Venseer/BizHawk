@@ -10,7 +10,7 @@ using System.ComponentModel;
 
 namespace BizHawk.Emulation.Cores.Nintendo.GBA
 {
-	[CoreAttributes("mGBA", "endrift", true, true, "0.4.1", "https://mgba.io/", false)]
+	[CoreAttributes("mGBA", "endrift", true, true, "0.5.0", "https://mgba.io/", false)]
 	[ServiceNotApplicable(typeof(IDriveLight), typeof(IRegionable))]
 	public class MGBAHawk : IEmulator, IVideoProvider, ISyncSoundProvider, IGBAGPUViewable,
 		ISaveRam, IStatable, IInputPollable, ISettable<MGBAHawk.Settings, MGBAHawk.SyncSettings>
@@ -63,8 +63,6 @@ namespace BizHawk.Emulation.Cores.Nintendo.GBA
 				CoreComm.VsyncDen = 4389;
 				CoreComm.NominalWidth = 240;
 				CoreComm.NominalHeight = 160;
-
-				InitStates();
 			}
 			catch
 			{
@@ -213,8 +211,8 @@ namespace BizHawk.Emulation.Cores.Nintendo.GBA
 
 		#region IMemoryDomains
 
-		unsafe byte PeekWRAM(IntPtr xwram, long addr) { return ((byte*)xwram.ToPointer())[addr];}
-		unsafe void PokeWRAM(IntPtr xwram, long addr, byte value) { ((byte*)xwram.ToPointer())[addr] = value; }
+		unsafe byte PeekWRAM(IntPtr xwram, long addr) { return ((byte*)xwram)[addr];}
+		unsafe void PokeWRAM(IntPtr xwram, long addr, byte value) { ((byte*)xwram)[addr] = value; }
 
 		void WireMemoryDomainPointers()
 		{
@@ -236,7 +234,6 @@ namespace BizHawk.Emulation.Cores.Nintendo.GBA
 			_cwram.Peek =
 				delegate(long addr)
 				{
-					LibmGBA.BizGetMemoryAreas(_core, s);
 					if (addr < 0 || addr >= (256 + 32) * 1024)
 						throw new IndexOutOfRangeException();
 					if (addr >= 256 * 1024)
@@ -351,10 +348,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.GBA
 			{
 				data = LegacyFix(data);
 			}
-			if (!LibmGBA.BizPutSaveRam(_core, data, data.Length))
-			{
-				throw new InvalidOperationException("BizPutSaveRam returned NULL!");
-			}
+			LibmGBA.BizPutSaveRam(_core, data, data.Length);
 		}
 
 		public bool SaveRamModified
@@ -367,14 +361,8 @@ namespace BizHawk.Emulation.Cores.Nintendo.GBA
 
 		#endregion
 
-		private void InitStates()
-		{
-			_savebuff = new byte[LibmGBA.BizGetStateMaxSize(_core)];
-			_savebuff2 = new byte[_savebuff.Length + 13];
-		}
-
-		private byte[] _savebuff;
-		private byte[] _savebuff2;
+		private byte[] _savebuff = new byte[0];
+		private byte[] _savebuff2 = new byte[13];
 
 		public bool BinarySaveStatesPreferred
 		{
@@ -394,13 +382,24 @@ namespace BizHawk.Emulation.Cores.Nintendo.GBA
 			LoadStateBinary(new BinaryReader(new MemoryStream(state)));
 		}
 
-		public void SaveStateBinary(BinaryWriter writer)
+		private void StartSaveStateBinaryInternal()
 		{
-			int size = LibmGBA.BizGetState(_core, _savebuff, _savebuff.Length);
-			if (size < 0)
+			IntPtr p = IntPtr.Zero;
+			int size = 0;
+			if (!LibmGBA.BizStartGetState(_core, ref p, ref size))
 				throw new InvalidOperationException("Core failed to save!");
-			writer.Write(size);
-			writer.Write(_savebuff, 0, size);
+			if (size != _savebuff.Length)
+			{
+				_savebuff = new byte[size];
+				_savebuff2 = new byte[size + 13];
+			}
+			LibmGBA.BizFinishGetState(p, _savebuff, size);
+		}
+
+		private void FinishSaveStateBinaryInternal(BinaryWriter writer)
+		{
+			writer.Write(_savebuff.Length);
+			writer.Write(_savebuff, 0, _savebuff.Length);
 
 			// other variables
 			writer.Write(IsLagFrame);
@@ -408,10 +407,16 @@ namespace BizHawk.Emulation.Cores.Nintendo.GBA
 			writer.Write(Frame);
 		}
 
+		public void SaveStateBinary(BinaryWriter writer)
+		{
+			StartSaveStateBinaryInternal();
+			FinishSaveStateBinaryInternal(writer);
+		}
+
 		public void LoadStateBinary(BinaryReader reader)
 		{
 			int length = reader.ReadInt32();
-			if (length > _savebuff.Length)
+			if (length != _savebuff.Length)
 			{
 				_savebuff = new byte[length];
 				_savebuff2 = new byte[length + 13];
@@ -428,9 +433,10 @@ namespace BizHawk.Emulation.Cores.Nintendo.GBA
 
 		public byte[] SaveStateBinary()
 		{
+			StartSaveStateBinaryInternal();
 			var ms = new MemoryStream(_savebuff2, true);
 			var bw = new BinaryWriter(ms);
-			SaveStateBinary(bw);
+			FinishSaveStateBinaryInternal(bw);
 			bw.Flush();
 			ms.Close();
 			return _savebuff2;
