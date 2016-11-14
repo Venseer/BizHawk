@@ -554,8 +554,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.NES
 					if (_isVS)
 					{
 						byte ret = 0;
-						// for whatever reason, in VS left and right controller have swapped regs
-						ret = read_joyport(0x4017);
+						ret = read_joyport(0x4016);
 						ret &= 1;
 						ret = (byte)(ret | (VS_service << 2) | (VS_dips[0] << 3) | (VS_dips[1] << 4) | (VS_coin_inserted << 5) | (VS_ROM_control<<7));
 
@@ -578,8 +577,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.NES
 						if (_isVS)
 						{
 							byte ret = 0;
-							// for whatever reason, in VS left and right controller have swapped regs
-							ret = read_joyport(0x4016);
+							ret = read_joyport(0x4017);
 							ret &= 1;
 
 							ret = (byte)(ret | (VS_dips[2] << 2) | (VS_dips[3] << 3) | (VS_dips[4] << 4) | (VS_dips[5] << 5) | (VS_dips[6] << 6) | (VS_dips[7] << 7));
@@ -701,7 +699,17 @@ namespace BizHawk.Emulation.Cores.Nintendo.NES
 		{
 			InputCallbacks.Call();
 			lagged = false;
-			byte ret = addr == 0x4016 ? ControllerDeck.ReadA(Controller) : ControllerDeck.ReadB(Controller);
+			byte ret = 0;
+			if (_isVS)
+			{
+				// for whatever reason, in VS left and right controller have swapped regs
+				ret = addr == 0x4017 ? ControllerDeck.ReadA(Controller) : ControllerDeck.ReadB(Controller);
+			}
+			else
+			{
+				ret = addr == 0x4016 ? ControllerDeck.ReadA(Controller) : ControllerDeck.ReadB(Controller);
+			}
+			
 			ret &= 0x1f;
 			ret |= (byte)(0xe0 & DB);
 			return ret;
@@ -932,15 +940,17 @@ namespace BizHawk.Emulation.Cores.Nintendo.NES
 		{
 			switch (cart.palette)
 			{
-				case "2C05": SetPalette(Palettes.palette_2c03_2c05); break;
-				case "2C04-1": SetPalette(Palettes.palette_2c04_001); break;
-				case "2C04-2": SetPalette(Palettes.palette_2c04_002); break;
-				case "2C04-3": SetPalette(Palettes.palette_2c04_003); break;
-				case "2C04-4": SetPalette(Palettes.palette_2c04_004); break;
+				case "2C05": SetPalette(Palettes.palette_2c03_2c05); ppu.CurrentLuma = PPU.PaletteLuma2C03; break;
+				case "2C04-1": SetPalette(Palettes.palette_2c04_001); ppu.CurrentLuma = PPU.PaletteLuma2C04_1; break;
+				case "2C04-2": SetPalette(Palettes.palette_2c04_002); ppu.CurrentLuma = PPU.PaletteLuma2C04_2; break;
+				case "2C04-3": SetPalette(Palettes.palette_2c04_003); ppu.CurrentLuma = PPU.PaletteLuma2C04_3; break;
+				case "2C04-4": SetPalette(Palettes.palette_2c04_004); ppu.CurrentLuma = PPU.PaletteLuma2C04_4; break;
 			}
 
 			//since this will run for every VS game, let's get security setting too
-			_isVS2c05 = cart.vs_security;
+			//values below 16 are for the 2c05 PPU
+			//values 16,32,48 are for Namco games and dealt with in mapper 206
+			_isVS2c05 = (byte)(cart.vs_security & 15);
 		}
 
 	}

@@ -401,7 +401,7 @@ namespace BizHawk.Client.EmuHawk
 					if (lines.Length > 0)
 					{
 						_tasClipboard.Clear();
-						for (int i = 0; i < lines.Length; i++)
+						for (int i = 0; i < lines.Length - 1; i++)
 						{
 							var line = TasClipboardEntry.SetFromMnemonicStr(lines[i]);
 							if (line == null)
@@ -448,7 +448,7 @@ namespace BizHawk.Client.EmuHawk
 					if (lines.Length > 0)
 					{
 						_tasClipboard.Clear();
-						for (int i = 0; i < lines.Length; i++)
+						for (int i = 0; i < lines.Length - 1; i++)
 						{
 							var line = TasClipboardEntry.SetFromMnemonicStr(lines[i]);
 							if (line == null)
@@ -790,6 +790,7 @@ namespace BizHawk.Client.EmuHawk
 			AutosaveAsBk2MenuItem.Checked = Settings.AutosaveAsBk2;
 			AutosaveAsBackupFileMenuItem.Checked = Settings.AutosaveAsBackupFile;
 			BackupPerFileSaveMenuItem.Checked = Settings.BackupPerFileSave;
+			SingleClickFloatEditMenuItem.Checked = Settings.SingleClickFloatEdit;
 		}
 
 		private void SetMaxUndoLevelsMenuItem_Click(object sender, EventArgs e)
@@ -901,6 +902,11 @@ namespace BizHawk.Client.EmuHawk
 		private void applyPatternToPaintedInputToolStripMenuItem_CheckedChanged(object sender, EventArgs e)
 		{
 			onlyOnAutoFireColumnsToolStripMenuItem.Enabled = applyPatternToPaintedInputToolStripMenuItem.Checked;
+		}
+
+		private void SingleClickFloatEditMenuItem_Click(object sender, EventArgs e)
+		{
+			Settings.SingleClickFloatEdit ^= true;
 		}
 
 		private void BindMarkersToInputMenuItem_Click(object sender, EventArgs e)

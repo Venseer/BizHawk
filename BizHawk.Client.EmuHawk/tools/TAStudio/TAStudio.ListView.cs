@@ -17,6 +17,7 @@ namespace BizHawk.Client.EmuHawk
 		private string _startFloatDrawColumn = string.Empty;
 		private bool _boolPaintState;
 		private float _floatPaintState;
+		private float _floatBackupState;
 		private bool _patternPaint = false;
 		private bool _startCursorDrag;
 		private bool _startSelectionDrag;
@@ -523,7 +524,7 @@ namespace BizHawk.Client.EmuHawk
 							_patternPaint = false;
 
 
-						if (e.Clicks != 2)
+						if (e.Clicks != 2 && !Settings.SingleClickFloatEdit)
 						{
 							CurrentTasMovie.ChangeLog.BeginNewBatch("Paint Float " + buttonName + " from frame " + frame);
 							_startFloatDrawColumn = buttonName;
@@ -539,6 +540,7 @@ namespace BizHawk.Client.EmuHawk
 								floatEditRow = frame;
 								_floatTypedValue = "";
 								_floatEditYPos = e.Y;
+								_floatBackupState = CurrentTasMovie.GetFloatState(_floatEditRow, _floatEditColumn);
 								_triggerAutoRestore = true;
 								JumpToGreenzone();
 							}
@@ -609,6 +611,9 @@ namespace BizHawk.Client.EmuHawk
 			if (_floatEditRow != -1 && _floatPaintState != CurrentTasMovie.GetFloatState(_floatEditRow, _floatEditColumn))
 			{
 				floatEditRow = -1;
+				_triggerAutoRestore = true;
+				JumpToGreenzone();
+				DoTriggeredAutoRestoreIfNeeded();
 				RefreshDialog();
 			}
 			_floatPaintState = 0;
@@ -696,7 +701,8 @@ namespace BizHawk.Client.EmuHawk
 				var buttonName = TasView.CurrentCell.Column.Name;
 
 				if (TasView.CurrentCell.RowIndex.HasValue &&
-					buttonName == FrameColumnName)
+					buttonName == FrameColumnName &&
+					_floatEditRow == -1)
 				{
 					if (Settings.EmptyMarkers)
 					{
@@ -909,7 +915,7 @@ namespace BizHawk.Client.EmuHawk
 		private void TasView_MouseMove(object sender, MouseEventArgs e)
 		{
 			// For float editing
-			int increment = (_floatEditYPos - e.Y) / 3;
+			int increment = (_floatEditYPos - e.Y) / 4;
 			if (_floatEditYPos == -1)
 				return;
 
@@ -931,7 +937,11 @@ namespace BizHawk.Client.EmuHawk
 				value = rMin;
 
 			CurrentTasMovie.SetFloatState(_floatEditRow, _floatEditColumn, value);
+			_floatTypedValue = value.ToString();
 
+			_triggerAutoRestore = true;
+			JumpToGreenzone();
+			DoTriggeredAutoRestoreIfNeeded();
 			RefreshDialog();
 		}
 
@@ -950,18 +960,6 @@ namespace BizHawk.Client.EmuHawk
 			{
 				GoToNextMarker();
 			}
-			else if (e.KeyCode == Keys.Escape)
-			{
-				if (_floatEditRow != -1)
-				{
-					_floatEditRow = -1;
-				}
-				else
-				{
-					// not using StopSeeking() here, since it has special logic and should only happen when seek frame is reached
-					CancelSeekContextMenuItem_Click(null, null);
-				}
-			}
 
 			// SuuperW: Float Editing
 			if (_floatEditRow != -1)
@@ -972,22 +970,48 @@ namespace BizHawk.Client.EmuHawk
 
 				Emulation.Common.ControllerDefinition.FloatRange range = Global.MovieSession.MovieControllerAdapter.Type.FloatRanges
 					[Global.MovieSession.MovieControllerAdapter.Type.FloatControls.IndexOf(_floatEditColumn)];
-				// Range for N64 Y axis has max -128 and min 127. That should probably be fixed ControllerDefinition.cs, but I'll put a quick fix here anyway.
+				
 				float rMax = range.Max;
 				float rMin = range.Min;
+				// Range for N64 Y axis has max -128 and min 127. That should probably be fixed ControllerDefinition.cs, but I'll put a quick fix here anyway.
 				if (rMax < rMin)
 				{
 					rMax = range.Min;
 					rMin = range.Max;
 				}
+
+				// feos: typing past max digits overwrites existing value, not touching the sign
+				// but doesn't handle situations where the range is like -50 through 100, where minimum is negative and has less digits
+				// it just uses 3 as maxDigits there too, leaving room for typing impossible values (that are still ignored by the game and then clamped)
+				int maxDigits = range.MaxDigits();
+				int curDigits = _floatTypedValue.Length;
+				string curMinus;
+				if (_floatTypedValue.StartsWith("-"))
+				{
+					curDigits -= 1;
+					curMinus = "-";
+				}
+				else
+				{
+					curMinus = "";
+				}
+
 				if (e.KeyCode == Keys.Right)
 					value = rMax;
 				else if (e.KeyCode == Keys.Left)
 					value = rMin;
 				else if (e.KeyCode >= Keys.D0 && e.KeyCode <= Keys.D9)
+				{
+					if (curDigits >= maxDigits)
+						_floatTypedValue = curMinus;
 					_floatTypedValue += e.KeyCode - Keys.D0;
+				}
 				else if (e.KeyCode >= Keys.NumPad0 && e.KeyCode <= Keys.NumPad9)
+				{
+					if (curDigits >= maxDigits)
+						_floatTypedValue = curMinus;
 					_floatTypedValue += e.KeyCode - Keys.NumPad0;
+				}
 				else if (e.KeyCode == Keys.OemMinus || e.KeyCode == Keys.Subtract)
 				{
 					if (_floatTypedValue.StartsWith("-"))
@@ -1005,12 +1029,26 @@ namespace BizHawk.Client.EmuHawk
 					else
 						value = Convert.ToSingle(_floatTypedValue);
 				}
-				else if (e.KeyCode == Keys.Escape)
+				else if (e.KeyCode == Keys.Enter)
 				{
-					if (_floatEditYPos != -1) // Cancel change from dragging cursor
+					if (_floatEditYPos != -1)
 					{
 						_floatEditYPos = -1;
-						CurrentTasMovie.SetFloatState(_floatEditRow, _floatEditColumn, _floatPaintState);
+					}
+					floatEditRow = -1;
+				}
+				else if (e.KeyCode == Keys.Escape)
+				{
+					if (_floatEditYPos != -1)
+					{
+						_floatEditYPos = -1;
+					}
+					if (_floatBackupState != _floatPaintState)
+					{
+						CurrentTasMovie.SetFloatState(_floatEditRow, _floatEditColumn, _floatBackupState);
+						_triggerAutoRestore = true;
+						JumpToGreenzone();
+						DoTriggeredAutoRestoreIfNeeded();
 					}
 					floatEditRow = -1;
 				}

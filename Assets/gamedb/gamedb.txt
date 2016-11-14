@@ -7,7 +7,7 @@
 ;h - hack
 ;u - unknown
 
-;Hash	Status	Name	System ID	Notes	MetaData	Configurations
+;Hash	Status	Name	System ID	Notes	MetaData	Configurations	CoreForce[neshawk|quicknes]
 
 #include gamedb_sega_sms.txt
 #include gamedb_sega_sg1000.txt
@@ -223,8 +223,10 @@ sha1:E365A1F87EDFE8A68F23D8521CBDBE56EC3D76A3	T	AV Mahjongg (Hacker) [T+Chi]	NES
 sha1:D540F1050055C74B68CA02F3BA215E23ED859560	B	AV Mahjongg (Hacker) [b1][T+Chi]	NES		board=MAPPER066;WRAM=0;PAD_H=0;PAD_V=1
 sha1:E8BDD327FA96576F501914BDF455C477EC2A20B4	B	AV Mahjongg (Hacker) [b1]	NES		board=MAPPER066;WRAM=0;PAD_H=0;PAD_V=1
 sha1:E816367A8CAC2AC470CEEBA8C8DC00CEC8C7009E	T	AV Mahjongg (Hacker) [T+Chi][a1]	NES		board=MAPPER066;WRAM=0;PAD_H=0;PAD_V=1
-
-
+sha1:315ACE4AD8AC09B7ABA2815F93EEB8AD97BA1D38	H	Fish Fall (Free Fall Hack)	NES		board=MAPPER011_HACKY
+sha1:F59E68705F6A6346E18A071884A21A6289754EB7	G	Free Fall (U) (Prototype) (Earlier)	NES		board=MAPPER011_HACKY
+sha1:4FB14A3DBCE888BB1F95570BE45317ED1513FE89	B	Free Fall (U) (Prototype) [b1]	NES		board=MAPPER011_HACKY
+sha1:88A3624F48A2780B2C2A9D742B2185C3B31FB3D7	H	Handy (Free Fall Hack)	NES		board=MAPPER011_HACKY
 
 ;;;;;;;;;;;;;;;;;;;-----------------------------------------------------------------------
 
@@ -321,7 +323,11 @@ EDD7A45A7F27E396B6D686F1861642D509863132		Datach SD Gundam Gundam Wars	NES		boar
 74218AAE93E4FEBFB2284BCF15811453418A2029		Datach Yuu Yuu Hakusho Bakutou Ankoku Bujutsu Kai	NES		board=MAPPER157
 6F3C65BD945FE13305A7A39D8CD884A5BF314A8F		Datach Crayon Shin Chan Ora to Poi Poi	NES		board=MAPPER157
 1218C891DEE878C18D31D38D07CAD5FB06B3B2CE		Datach Yuu Yuu akusho Baktutou	NES		board=MAPPER157
-  
+
+; ArcadePit hacks
+; Why does this one need NesHawk?
+sha1:90acbbdfad1465032dfff77175320bab8aa4adb7	H	Mike Tyson's Punch-Out!! [Buck Edit] (USA)	NES				NesHawk
+
 #include gamedb_goodnes.txt
 
 

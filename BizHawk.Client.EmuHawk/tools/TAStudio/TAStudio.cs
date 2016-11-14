@@ -72,6 +72,7 @@ namespace BizHawk.Client.EmuHawk
 				AutosaveAsBk2 = false;
 				AutosaveAsBackupFile = false;
 				BackupPerFileSave = false;
+				SingleClickFloatEdit = false;
                 // default to taseditor fashion
                 denoteStatesWithIcons = false;
                 denoteStatesWithBGColor = true;
@@ -95,6 +96,7 @@ namespace BizHawk.Client.EmuHawk
 			public bool AutosaveAsBk2 { get; set; }
 			public bool AutosaveAsBackupFile { get; set; }
 			public bool BackupPerFileSave { get; set; }
+			public bool SingleClickFloatEdit { get; set; }
 
             public bool denoteStatesWithIcons { get; set; }
             public bool denoteStatesWithBGColor { get; set; }
@@ -399,11 +401,7 @@ namespace BizHawk.Client.EmuHawk
 			}
 
 			EngageTastudio();
-
-			if (!TasView.AllColumns.Any()) // If a project with column settings has already been loaded we don't need to do this
-			{
-				SetUpColumns();
-			}
+			SetUpColumns();
 			return true;
 		}
 
@@ -423,7 +421,6 @@ namespace BizHawk.Client.EmuHawk
 		private void GetClientSettingsOnLoad(string settingsJson)
 		{
 			TasView.LoadSettingsSerialized(settingsJson);
-			SetUpToolStripColumns();
 		}
 
 		private void SetUpColumns()
