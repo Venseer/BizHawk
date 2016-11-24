@@ -6,7 +6,7 @@ namespace BizHawk.Emulation.Cores.Intellivision
 {
 	public sealed class STIC : IVideoProvider
 	{
-		private bool Sr1, Sr2, Sst, Fgbg = false;
+		public bool Sr1, Sr2, Sst, Fgbg = false;
 		private ushort[] Register = new ushort[64];
 		private ushort ColorSP = 0x0028;
 
@@ -171,24 +171,6 @@ namespace BizHawk.Emulation.Cores.Intellivision
 			return false;
 		}
 
-		public void Execute(int cycles)
-		{
-			PendingCycles -= cycles;
-			TotalExecutedCycles += cycles;
-			if (PendingCycles <= 0)
-			{
-				Sr1 = !Sr1;
-				if (Sr1)
-				{
-					PendingCycles = 14934 - 3791;
-				}
-				else
-				{
-					PendingCycles += 3791;
-				}
-			}
-		}
-
 		public int ColorToRGBA(int color)
 		{
 			switch (color)
@@ -233,6 +215,9 @@ namespace BizHawk.Emulation.Cores.Intellivision
 		{
 			// here we will also need to apply the 'delay' register values.
 			// this shifts the background portion of the screen relative to the mobs
+
+			//also at the start of every frame the color stack is reset
+			ColorSP = 0x0028;
 			
 			// The background is a 20x12 grid of "cards".
 			for (int card_row = 0; card_row < 12; card_row++)
@@ -247,6 +232,7 @@ namespace BizHawk.Emulation.Cores.Intellivision
 					int card_num = card >> 3;
 					int fg = card & 0x0007;
 					int bg;
+		
 					if (Fgbg)
 					{
 						bg = ((card >> 9) & 0x0008) | ((card >> 11) & 0x0004) | ((card >> 9) & 0x0003);
@@ -360,10 +346,10 @@ namespace BizHawk.Emulation.Cores.Intellivision
 								// also if the pixel is on set it in the collision matrix
 								// note that the collision field is attached to the lower right corner of the BG
 								// so we add 8 to x and 16 to y here
-								if ((card_col * 8 + pict_col + 8) < 167)
+								if ((card_col * 8 + (7-pict_col) + 8) < 167)
 								{
-									Collision[card_col * 8 + pict_col + 8, (card_row * 8 + pict_row) * 2 + 16] = 1 << 8;
-									Collision[card_col * 8 + pict_col + 8, (card_row * 8 + pict_row) * 2 + 16 + 1] = 1 << 8;
+									Collision[card_col * 8 + (7-pict_col) + 8, (card_row * 8 + pict_row) * 2 + 16] = 1 << 8;
+									Collision[card_col * 8 + (7-pict_col) + 8, (card_row * 8 + pict_row) * 2 + 16 + 1] = 1 << 8;
 								}
 							}
 							else
@@ -383,22 +369,24 @@ namespace BizHawk.Emulation.Cores.Intellivision
 			int x_delay = Register[0x30];
 			int y_delay = Register[0x31];
 
+			int x_border = (Register[0x32] & 0x0001) * 8;
+			int y_border = ((Register[0x32] >> 1) & 0x0001) * 8;
+
 			for (int j=0;j<96;j++)
 			{
 				for (int i = 0; i < 159; i++)
 				{
 					if (i >= x_delay && j >= y_delay)
 					{
-						FrameBuffer[(j * 2) * 159 + i] = BGBuffer[(j - y_delay) * 159 + i - x_delay];
-						FrameBuffer[(j * 2 + 1) * 159 + i] = BGBuffer[(j - y_delay) * 159 + i - x_delay];
-					}
-					else
-					{
-						FrameBuffer[(j * 2) * 159 + i] = ColorToRGBA(Register[0x2C]);
-						FrameBuffer[(j * 2 + 1) * 159 + i] = ColorToRGBA(Register[0x2C]);
+						if (i >= x_border && j >= y_border)
+						{
+							FrameBuffer[(j * 2) * 159 + i] = BGBuffer[(j - y_delay) * 159 + i - x_delay];
+							FrameBuffer[(j * 2 + 1) * 159 + i] = BGBuffer[(j - y_delay) * 159 + i - x_delay];
+						} 
 					}
 				}
 			}
+
 			
 		}
 
@@ -452,8 +440,10 @@ namespace BizHawk.Emulation.Cores.Intellivision
 			int x_delay = Register[0x30];
 			int y_delay = Register[0x31];
 
+			int cur_x, cur_y;
 
-			for (int i = 0; i < 8; i++)
+			// we go from 7 to zero because visibility of lower numbered MOBs have higher priority 
+			for (int i = 7; i >= 0 ; i--)
 			{
 				x = Register[i];
 				y = Register[i + 8];
@@ -466,18 +456,21 @@ namespace BizHawk.Emulation.Cores.Intellivision
 				if (color_3)
 					loc_color += 4;
 
+				bool priority = attr.Bit(13);
 				byte loc_x = (byte)(x & 0xFF);
 				byte loc_y = (byte)(y & 0x7F);
 				bool vis = x.Bit(9);
 				bool x_flip = y.Bit(10);
 				bool y_flip = y.Bit(11);
-				bool yres = y.Bit(7);
-				bool ysiz2 = y.Bit(8);
-				bool ysiz4 = y.Bit(9);
+				ushort yres = y.Bit(7) ? (ushort)2 : (ushort)1; 
+				ushort ysiz2 = y.Bit(8) ? (ushort)2 : (ushort)1;
+				ushort ysiz4 = y.Bit(9) ? (ushort)4 : (ushort)1;
 				bool intr = x.Bit(8);
+				ushort x_size = x.Bit(10) ? (ushort)2 : (ushort)1;
 
+				ushort y_size = (ushort)(ysiz2 * ysiz4);
 				// setting yres implicitly uses an even card first
-				if (yres)
+				if (yres>1)
 					card &= 0xFE;
 
 				// in GRAM mode only take the first 6 bits of the card number
@@ -500,7 +493,7 @@ namespace BizHawk.Emulation.Cores.Intellivision
 				}
 
 				// assign the y_mob, used to double vertical resolution
-				if (yres)
+				if (yres>1)
 				{
 					for (int j = 0; j < 8; j++)
 					{
@@ -533,7 +526,7 @@ namespace BizHawk.Emulation.Cores.Intellivision
 
 						mobs[j] = (byte)(temp_0 + temp_1 + temp_2 + temp_3 + temp_4 + temp_5 + temp_6 + temp_7);
 					}
-					if (yres)
+					if (yres>1)
 					{
 						for (int j = 0; j < 8; j++)
 						{
@@ -557,20 +550,44 @@ namespace BizHawk.Emulation.Cores.Intellivision
 					byte temp_1 = mobs[1];
 					byte temp_2 = mobs[2];
 					byte temp_3 = mobs[3];
+					byte temp_4 = mobs[4];
+					byte temp_5 = mobs[5];
+					byte temp_6 = mobs[6];
+					byte temp_7 = mobs[7];
 
-					mobs[0] = mobs[7];
-					mobs[1] = mobs[6];
-					mobs[2] = mobs[5];
-					mobs[3] = mobs[4];
-					mobs[4] = temp_3;
-					mobs[5] = temp_2;
-					mobs[6] = temp_1;
-					mobs[7] = temp_0;
+
+					if (yres==1)
+					{
+						mobs[0] = mobs[7];
+						mobs[1] = mobs[6];
+						mobs[2] = mobs[5];
+						mobs[3] = mobs[4];
+						mobs[4] = temp_3;
+						mobs[5] = temp_2;
+						mobs[6] = temp_1;
+						mobs[7] = temp_0;
+					}
+					else
+					{
+						mobs[0] = y_mobs[7];
+						mobs[1] = y_mobs[6];
+						mobs[2] = y_mobs[5];
+						mobs[3] = y_mobs[4];
+						mobs[4] = y_mobs[3];
+						mobs[5] = y_mobs[2];
+						mobs[6] = y_mobs[1];
+						mobs[7] = y_mobs[0];
+
+						y_mobs[0] = temp_7;
+						y_mobs[1] = temp_6;
+						y_mobs[2] = temp_5;
+						y_mobs[3] = temp_4;
+						y_mobs[4] = temp_3;
+						y_mobs[5] = temp_2;
+						y_mobs[6] = temp_1;
+						y_mobs[7] = temp_0;
+					}
 				}
-
-				//TODO:stretch
-
-				//TODO:pixel priority
 
 				//draw the mob and check for collision
 				//we already have the BG at this point, so for now let's assume mobs have priority for testing
@@ -581,54 +598,131 @@ namespace BizHawk.Emulation.Cores.Intellivision
 					{
 						bool pixel = mobs[j].Bit(7 - k);
 
-						if ((loc_x + k) < (167-x_delay) && (loc_y*2 + j) < (208-y_delay*2) && pixel && (loc_x + k ) >= (8 - x_delay) && (loc_y * 2 + j) >= (16 - y_delay*2))
-						{
-							if (vis)
-								FrameBuffer[(loc_y * 2 + j - (16 - y_delay * 2)) * 159 + loc_x + k - (8 - x_delay)] = ColorToRGBA(loc_color);
+						cur_x = loc_x + k * x_size;
 
+						for (int m = 0; m < y_size; m++)
+						{
+							cur_y = j * y_size + m;
+
+							if ((cur_x) < (167 - x_delay) && (loc_y * 2 + cur_y) < (208 - y_delay * 2) && pixel && vis && (cur_x) >= (8 - x_delay) && (loc_y * 2 + cur_y) >= (16 - y_delay * 2))
+							{
+								if (!(priority && (Collision[cur_x, loc_y * 2 + cur_y]&0x100)>0))
+									FrameBuffer[(loc_y * 2 + cur_y - (16 - y_delay * 2)) * 159 + cur_x - (8 - x_delay)] = ColorToRGBA(loc_color);
+							}
 							//a MOB does not need to be visible for it to be interracting
-							if (intr)
-								Collision[loc_x + k, loc_y * 2 + j] |= (ushort)(1 << i);
+							//special case: a mob with x position 0 is counted as off
+							if (intr && pixel && (cur_x) < 167 && (loc_y * 2 + cur_y) < 210 && loc_x != 0)
+							{
+								Collision[cur_x, loc_y * 2 + cur_y] |= (ushort)(1 << i);
+							}
+
+							if (x_size == 2)
+							{
+								if ((cur_x + 1) < (167 - x_delay) && (loc_y * 2 + cur_y) < (208 - y_delay * 2) && pixel && vis && (cur_x + 1) >= (8 - x_delay) && (loc_y * 2 + cur_y) >= (16 - y_delay * 2))
+								{
+									if (!(priority && (Collision[cur_x + 1, loc_y * 2 + cur_y] & 0x100) > 0))
+										FrameBuffer[(loc_y * 2 + cur_y - (16 - y_delay * 2)) * 159 + cur_x + 1 - (8 - x_delay)] = ColorToRGBA(loc_color);
+								}
+								//a MOB does not need to be visible for it to be interracting
+								//special case: a mob with x position 0 is counted as off
+								if (intr && pixel && (cur_x + 1) < 167 && (loc_y * 2 + cur_y) < 210 && loc_x != 0)
+								{
+									Collision[cur_x + 1, loc_y * 2 + cur_y] |= (ushort)(1 << i);
+								}
+							}
 						}
 					}
 				}
 
-				if (yres)
+				//
+				if (yres>1)
 				{
 					for (int j = 0; j < 8; j++)
 					{
 						for (int k = 0; k < 8; k++)
 						{
 							bool pixel = y_mobs[j].Bit(7 - k);
+							cur_x = loc_x + k * x_size;
 
-							if ((loc_x + k) < (167-x_delay) && ((loc_y + 4) * 2 + j) < (208-y_delay*2) && pixel && (loc_x + k) >= (8 - x_delay) && ((loc_y + 4) * 2 + j) >= (16 - y_delay * 2))
+							for (int m = 0; m < y_size; m++)
 							{
-								if (vis)
-									FrameBuffer[((loc_y + 4) * 2 + j - (16 - y_delay * 2)) * 159 + loc_x + k - (8 - x_delay)] = ColorToRGBA(loc_color);
-								
+								cur_y = j * y_size + m;
+
+								if ((cur_x) < (167 - x_delay) && ((loc_y + 4 * y_size) * 2 + cur_y) < (208 - y_delay * 2) && pixel && vis && (cur_x) >= (8 - x_delay) && ((loc_y + 4 * y_size) * 2 + cur_y) >= (16 - y_delay * 2))
+								{
+									if (!(priority && (Collision[cur_x, (loc_y + 4 * y_size) * 2 + cur_y] & 0x100) > 0))
+										FrameBuffer[((loc_y + 4 * y_size) * 2 + cur_y - (16 - y_delay * 2)) * 159 + cur_x - (8 - x_delay)] = ColorToRGBA(loc_color);
+								}
 								//a MOB does not need to be visible for it to be interracting
-								if (intr)
-									Collision[loc_x + k, (loc_y+4) * 2 + j] |= (ushort)(1 << i);
+								//special case: a mob with x position 0 is counted as off
+								if (intr && pixel && (cur_x) < 167 && ((loc_y + 4 * y_size) * 2 + cur_y) < 210 && loc_x != 0)
+								{
+									Collision[cur_x, (loc_y + 4 * y_size) * 2 + cur_y] |= (ushort)(1 << i);
+								}
+
+								if (x_size == 2)
+								{
+									if ((cur_x + 1) < (167 - x_delay) && ((loc_y + 4 * y_size) * 2 + cur_y) < (208 - y_delay * 2) && pixel && vis && (cur_x + 1) >= (8 - x_delay) && ((loc_y + 4 * y_size) * 2 + cur_y) >= (16 - y_delay * 2))
+									{
+										if (!(priority && (Collision[cur_x + 1, (loc_y + 4 * y_size) * 2 + cur_y] & 0x100) > 0))
+											FrameBuffer[((loc_y + 4 * y_size) * 2 + cur_y - (16 - y_delay * 2)) * 159 + cur_x + 1 - (8 - x_delay)] = ColorToRGBA(loc_color);
+									}
+									//a MOB does not need to be visible for it to be interracting
+									//special case: a mob with x position 0 is counted as off
+									if (intr && pixel && (cur_x + 1) < 167 && ((loc_y + 4 * y_size) * 2 + cur_y) < 210 && loc_x != 0)
+									{
+										Collision[cur_x + 1, (loc_y + 4 * y_size) * 2 + cur_y] |= (ushort)(1 << i);
+									}
+								}
 							}
 						}
 					}
 				}
 			}
-			
+
 			// by now we have collision information for all 8 mobs and the BG
 			// so we can store data in the collision registers here
-			
-			for (int i = 0;i<159;i++)
+			int x_border = Register[0x32].Bit(0) ? 16 : 8;
+			int y_border = Register[0x32].Bit(1) ? 32 : 16;
+
+			int x_border_2 = Register[0x32].Bit(0) ? 8 : 0;
+			int y_border_2 = Register[0x32].Bit(1) ? 16 : 0;
+
+			for (int i = 0; i < 167; i++)
 			{
-				for (int j=0;j<192;j++)
+				for (int j = 0; j < 210; j++)
 				{
-					for (int k=0;k<8;k++)
+					// while we are here we can set collision detection bits for the border region
+					if (i<x_border || i==166)
 					{
-						for (int m=0;m<9;m++)
+						Collision[i, j] |= (1 << 9);
+					}
+					if (j < y_border || j >= 208)
+					{
+						Collision[i, j] |= (1 << 9);
+					}
+
+					// and also make sure the border region is all the border color
+					if ((i-x_delay)>=0 && (i-x_delay)<159 && (j-y_delay*2)>=0 && (j-y_delay*2)<192)
+					{
+						if ((i-x_delay) < x_border_2)
+							FrameBuffer[(j - y_delay*2) * 159 + (i - x_delay)] = ColorToRGBA(Register[0x2C]);
+
+						if ((j - y_delay*2) < y_border_2)
+							FrameBuffer[(j - y_delay*2) * 159 + (i - x_delay)] = ColorToRGBA(Register[0x2C]);
+					}
+
+					// the extra condition here is to ignore only border collsion bit set
+					if (Collision[i, j] != 0 && Collision[i,j] != (1<<9) && Collision[i,j] != (1<<8)) 
+					{
+						for (int k = 0; k < 8; k++)
 						{
-							if (k!=m) // mobs never self interact
+							for (int m = 0; m < 10; m++)
 							{
-								Register[k + 24] |= (ushort)((Collision[i, j].Bit(k) && Collision[i, j].Bit(m)) ? 1<<m : 0);
+								if (k != m) // mobs never self interact
+								{
+									Register[k + 24] |= (ushort)((Collision[i, j].Bit(k) && Collision[i, j].Bit(m)) ? 1 << m : 0);
+								}
 							}
 						}
 					}
