@@ -72,12 +72,19 @@ namespace BizHawk.Client.EmuHawk
 			{
 				GoToLastEmulatedFrameIfNecessary(CurrentTasMovie.LastValidFrame);
 			}
+			else
+			{
+				_triggerAutoRestore = false;
+			}
 		}
 
 		private void StartSeeking(int? frame)
 		{
 			if (!frame.HasValue)
 				return;
+
+			if (Mainform.PauseOnFrame != null)
+				StopSeeking();
 
 			_seekStartFrame = Emulator.Frame;
 			Mainform.PauseOnFrame = frame.Value;
@@ -551,8 +558,6 @@ namespace BizHawk.Client.EmuHawk
 								_floatTypedValue = "";
 								_floatEditYPos = e.Y;
 								_floatBackupState = CurrentTasMovie.GetFloatState(_floatEditRow, _floatEditColumn);
-								_triggerAutoRestore = true;
-								JumpToGreenzone();
 							}
 							RefreshDialog();
 						}
@@ -1106,7 +1111,7 @@ namespace BizHawk.Client.EmuHawk
 				if (_floatBackupState != _floatPaintState)
 				{
 					CurrentTasMovie.SetFloatState(_floatEditRow, _floatEditColumn, _floatBackupState);
-					_triggerAutoRestore = true;
+					_triggerAutoRestore = Emulator.Frame > _floatEditRow;
 					JumpToGreenzone();
 					DoTriggeredAutoRestoreIfNeeded();
 				}
@@ -1161,7 +1166,7 @@ namespace BizHawk.Client.EmuHawk
 
 				if (value != prev) // Auto-restore
 				{
-					_triggerAutoRestore = true;
+					_triggerAutoRestore = Emulator.Frame > _floatEditRow;
 					JumpToGreenzone();
 					DoTriggeredAutoRestoreIfNeeded();
 				}
