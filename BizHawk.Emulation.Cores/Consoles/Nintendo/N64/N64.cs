@@ -55,7 +55,9 @@ namespace BizHawk.Emulation.Cores.Nintendo.N64
 		{
 			ServiceProvider = new BasicServiceProvider(this);
 			InputCallbacks = new InputCallbackSystem();
-			_memorycallbacks.ActiveChanged += RefreshMemoryCallbacks;
+
+			_memorycallbacks.CallbackAdded += AddBreakpoint;
+			_memorycallbacks.CallbackRemoved += RemoveBreakpoint;
 
 			int SaveType = 0;
 			if (game.OptionValue("SaveType") == "EEPROM_16K")
@@ -130,6 +132,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.N64
 			_audioProvider = new N64Audio(api);
 			_inputProvider = new N64Input(this.AsInputPollable(), api, comm, this._syncSettings.Controllers);
 			(ServiceProvider as BasicServiceProvider).Register<IVideoProvider>(_videoProvider);
+			(ServiceProvider as BasicServiceProvider).Register<ISoundProvider>(_audioProvider.Resampler);
 
 			string rsp;
 			switch (_syncSettings.Rsp)
@@ -149,9 +152,11 @@ namespace BizHawk.Emulation.Cores.Nintendo.N64
 			api.AttachPlugin(mupen64plusApi.m64p_plugin_type.M64PLUGIN_RSP, rsp);
 
 			InitMemoryDomains();
-			RefreshMemoryCallbacks();
 			if (_syncSettings.Core != N64SyncSettings.CoreType.Dynarec)
+			{
 				ConnectTracer();
+				SetBreakpointHandler();
+			}
 
 			api.AsyncExecuteEmulator();
 
@@ -226,8 +231,6 @@ namespace BizHawk.Emulation.Cores.Nintendo.N64
 		{
 			IsVIFrame = false;
 
-			RefreshMemoryCallbacks();
-
 			if (Tracer != null && Tracer.Enabled)
 			{
 				api.setTraceCallback(_tracecb);
@@ -239,12 +242,12 @@ namespace BizHawk.Emulation.Cores.Nintendo.N64
 
 			_audioProvider.RenderSound = rendersound;
 
-			if (Controller["Reset"])
+			if (Controller.IsPressed("Reset"))
 			{
 				api.soft_reset();
 			}
 
-			if (Controller["Power"])
+			if (Controller.IsPressed("Power"))
 			{
 				api.hard_reset();
 			}
@@ -267,14 +270,6 @@ namespace BizHawk.Emulation.Cores.Nintendo.N64
 		public CoreComm CoreComm { get; private set; }
 
 		public DisplayType Region { get { return _display_type; } }
-
-		public ISoundProvider SoundProvider { get { return null; } }
-
-		public ISyncSoundProvider SyncSoundProvider { get { return _audioProvider.Resampler; } }
-
-		public bool StartAsyncSound() { return false; }
-
-		public void EndAsyncSound() { }
 
 		public ControllerDefinition ControllerDefinition
 		{
