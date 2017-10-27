@@ -4,32 +4,51 @@ namespace BizHawk.Emulation.Cores.Calculators
 {
 	public partial class TI83 : IEmulator
 	{
-		public IEmulatorServiceProvider ServiceProvider { get; private set; }
+		public IEmulatorServiceProvider ServiceProvider { get; }
 
-		public ControllerDefinition ControllerDefinition
+		public ControllerDefinition ControllerDefinition => TI83Controller;
+
+		public void FrameAdvance(IController controller, bool render, bool rendersound)
 		{
-			get { return TI83Controller; }
-		}
-
-		public IController Controller { get; set; }
-
-		public void FrameAdvance(bool render, bool rendersound)
-		{
+			_controller = controller;
 			_lagged = true;
 
-			Cpu.Debug = Tracer.Enabled;
-
-			if (Cpu.Debug && Cpu.Logger == null) // TODO, lets not do this on each frame. But lets refactor CoreComm/CoreComm first
-				Cpu.Logger = (s) => Tracer.Put(s);
-
-			//I eyeballed this speed
-			for (int i = 0; i < 5; i++)
+			if (_tracer.Enabled)
 			{
-				_onPressed = Controller.IsPressed("ON");
+				_cpu.TraceCallback = s => _tracer.Put(s);
+			}
+			else
+			{
+				_cpu.TraceCallback = null;
+			}
 
-				//and this was derived from other emus
-				Cpu.ExecuteCycles(10000);
-				Cpu.Interrupt = true;
+			_onPressed = controller.IsPressed("ON");
+
+			if (_onPressed && ON_key_int_EN && !ON_key_int)
+			{
+				ON_key_int = true;
+				_cpu.FlagI = true;
+			}
+
+			// see: http://wikiti.brandonw.net/index.php?title=83:Ports:04
+			// for timer interrupt frequency
+
+			// CPU frequency is 6MHz
+			for (int i = 0; i < 100000; i++)
+			{
+				_cpu.ExecuteOne();
+
+				TIM_count++;
+				if (TIM_count >= TIM_hit)
+				{
+					TIM_count = 0;
+				
+					if (TIM_1_int_EN)
+					{
+						TIM_1_int = true;
+						_cpu.FlagI = true;
+					}
+				}				
 			}
 
 			Frame++;
@@ -45,24 +64,24 @@ namespace BizHawk.Emulation.Cores.Calculators
 		public int Frame
 		{
 			get { return _frame; }
-			set { _frame = value; }
+			private set { _frame = value; }
 		}
 
-		public string SystemId { get { return "TI83"; } }
+		public string SystemId => "TI83";
 
-		public bool DeterministicEmulation { get { return true; } }
+	    public bool DeterministicEmulation => true;
 
-		public string BoardName { get { return null; } }
-
-		public void ResetCounters()
+	    public void ResetCounters()
 		{
 			Frame = 0;
 			_lagCount = 0;
 			_isLag = false;
 		}
 
-		public CoreComm CoreComm { get; private set; }
+		public CoreComm CoreComm { get; }
 
-		public void Dispose() { }
+		public void Dispose()
+		{
+		}
 	}
 }

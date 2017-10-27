@@ -9,28 +9,25 @@ using BizHawk.Emulation.Cores.Components.M6502;
 
 namespace BizHawk.Emulation.Cores.Nintendo.NES
 {
-	public partial class NES : IEmulator
+	public partial class NES : IEmulator, ICycleTiming
 	{
 		//hardware/state
 		public MOS6502X cpu;
-		int cpu_accumulate; //cpu timekeeper
 		public PPU ppu;
 		public APU apu;
 		public byte[] ram;
 		NESWatch[] sysbus_watch = new NESWatch[65536];
 		public byte[] CIRAM; //AKA nametables
-		string game_name = string.Empty; //friendly name exposed to user and used as filename base
+		string game_name = ""; //friendly name exposed to user and used as filename base
 		CartInfo cart; //the current cart prototype. should be moved into the board, perhaps
 		internal INESBoard Board; //the board hardware that is currently driving things
 		EDetectionOrigin origin = EDetectionOrigin.None;
 		int sprdma_countdown;
 
 		bool _irq_apu; //various irq signals that get merged to the cpu irq pin
-					   /// <summary>clock speed of the main cpu in hz</summary>
+		
+		/// <summary>clock speed of the main cpu in hz</summary>
 		public int cpuclockrate { get; private set; }
-
-		//irq state management
-		public bool irq_apu { get { return _irq_apu; } set { _irq_apu = value; } }
 
 		//user configuration 
 		int[] palette_compiled = new int[64 * 8];
@@ -62,11 +59,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.NES
 		private DisplayType _display_type = DisplayType.NTSC;
 
 		//Sound config
-		public void SetSquare1(int v) { apu.Square1V = v; }
-		public void SetSquare2(int v) { apu.Square2V = v; }
-		public void SetTriangle(int v) { apu.TriangleV = v; }
-		public void SetNoise(int v) { apu.NoiseV = v; }
-		public void SetDMC(int v) { apu.DMCV = v; }
+		public void SetVol1(int v) { apu.m_vol = v; }
 
 		/// <summary>
 		/// for debugging only!
@@ -211,29 +204,32 @@ namespace BizHawk.Emulation.Cores.Nintendo.NES
 				case Common.DisplayType.PAL:
 					apu = new APU(this, apu, true);
 					ppu.region = PPU.Region.PAL;
-					CoreComm.VsyncNum = 50;
-					CoreComm.VsyncDen = 1;
+					VsyncNum = 50;
+					VsyncDen = 1;
 					cpuclockrate = 1662607;
 					cpu_sequence = cpu_sequence_PAL;
 					_display_type = DisplayType.PAL;
+					ClockRate = 5320342.5;
 					break;
 				case Common.DisplayType.NTSC:
 					apu = new APU(this, apu, false);
 					ppu.region = PPU.Region.NTSC;
-					CoreComm.VsyncNum = 39375000;
-					CoreComm.VsyncDen = 655171;
+					VsyncNum = 39375000;
+					VsyncDen = 655171;
 					cpuclockrate = 1789773;
 					cpu_sequence = cpu_sequence_NTSC;
+					ClockRate = 5369318.1818181818181818181818182;
 					break;
 				// this is in bootgod, but not used at all
-				case Common.DisplayType.DENDY:
+				case Common.DisplayType.Dendy:
 					apu = new APU(this, apu, false);
 					ppu.region = PPU.Region.Dendy;
-					CoreComm.VsyncNum = 50;
-					CoreComm.VsyncDen = 1;
+					VsyncNum = 50;
+					VsyncDen = 1;
 					cpuclockrate = 1773448;
 					cpu_sequence = cpu_sequence_NTSC;
-					_display_type = DisplayType.DENDY;
+					_display_type = DisplayType.Dendy;
+					ClockRate = 5320342.5;
 					break;
 				default:
 					throw new Exception("Unknown displaytype!");
@@ -245,7 +241,6 @@ namespace BizHawk.Emulation.Cores.Nintendo.NES
 
 			// apu has some specific power up bahaviour that we will emulate here
 			apu.NESHardReset();
-
 
 			if (SyncSettings.InitialWRamStatePattern != null && SyncSettings.InitialWRamStatePattern.Any())
 			{
@@ -273,11 +268,6 @@ namespace BizHawk.Emulation.Cores.Nintendo.NES
 
 			SetupMemoryDomains();
 
-			//in this emulator, reset takes place instantaneously
-			cpu.PC = (ushort)(ReadMemory(0xFFFC) | (ReadMemory(0xFFFD) << 8));
-			cpu.P = 0x34;
-			cpu.S = 0xFD;
-
 			// some boards cannot have specific values in RAM upon initialization
 			// Let's hard code those cases here
 			// these will be defined through the gameDB exclusively for now.
@@ -292,14 +282,30 @@ namespace BizHawk.Emulation.Cores.Nintendo.NES
 				{
 					ram[0x701] = 0xFF;
 				}
+				
+				if (cart.DB_GameInfo.Hash == "68ABE1E49C9E9CCEA978A48232432C252E5912C0") // Dancing Blocks
+				{
+					ram[0xEC] = 0;
+					ram[0xED] = 0;
+				}
 			}
 
 		}
 
+		public long CycleCount => ppu.TotalCycles;
+		public double ClockRate { get; private set; }
+
+		private int VsyncNum { get; set; }
+		private int VsyncDen { get; set; }
+
+		private IController _controller;
+
 		bool resetSignal;
 		bool hardResetSignal;
-		public void FrameAdvance(bool render, bool rendersound)
+		public void FrameAdvance(IController controller, bool render, bool rendersound)
 		{
+			_controller = controller;
+
 			if (Tracer.Enabled)
 				cpu.TraceCallback = (s) => Tracer.Put(s);
 			else
@@ -322,16 +328,16 @@ namespace BizHawk.Emulation.Cores.Nintendo.NES
 
 			//if (resetSignal)
 			//Controller.UnpressButton("Reset");   TODO fix this
-			resetSignal = Controller.IsPressed("Reset");
-			hardResetSignal = Controller.IsPressed("Power");
+			resetSignal = controller.IsPressed("Reset");
+			hardResetSignal = controller.IsPressed("Power");
 
 			if (Board is FDS)
 			{
 				var b = Board as FDS;
-				if (Controller.IsPressed("FDS Eject"))
+				if (controller.IsPressed("FDS Eject"))
 					b.Eject();
 				for (int i = 0; i < b.NumSides; i++)
-					if (Controller.IsPressed("FDS Insert " + i))
+					if (controller.IsPressed("FDS Insert " + i))
 						b.InsertSide(i);
 			}
 
@@ -353,7 +359,40 @@ namespace BizHawk.Emulation.Cores.Nintendo.NES
 					VS_coin_inserted &= 1;
 			}
 
-			ppu.FrameAdvance();
+			if (ppu.ppudead > 0)
+			{
+				while (ppu.ppudead > 0)
+				{
+					ppu.NewDeadPPU();
+				}				
+			}
+			else
+			{
+				ppu.ppu_init_frame();
+
+				ppu.do_vbl = true;
+				ppu.do_active_sl = true;
+				ppu.do_pre_vbl = true;
+
+				// do the vbl ticks seperate, that will save us a few checks that don't happen in active region
+				while (ppu.do_vbl)
+				{
+					ppu.TickPPU_VBL();
+				}
+
+				// now do the rest of the frame
+				while (ppu.do_active_sl)
+				{
+					ppu.TickPPU_active();
+				}
+
+				// now do the pre-NMI lines
+				while (ppu.do_pre_vbl)
+				{
+					ppu.TickPPU_preVBL();
+				}
+			}
+			
 			if (lagged)
 			{
 				_lagcount++;
@@ -373,15 +412,14 @@ namespace BizHawk.Emulation.Cores.Nintendo.NES
 		}
 
 		//PAL:
-		//0 15 30 45 60 -> 12 27 42 57 -> 9 24 39 54 -> 6 21 36 51 -> 3 18 33 48 -> 0
 		//sequence of ppu clocks per cpu clock: 3,3,3,3,4
 		//at least it should be, but something is off with that (start up time?) so it is 3,3,3,4,3 for now
 		//NTSC:
 		//sequence of ppu clocks per cpu clock: 3
-		ByteBuffer cpu_sequence;
+		public ByteBuffer cpu_sequence;
 		static ByteBuffer cpu_sequence_NTSC = new ByteBuffer(new byte[] { 3, 3, 3, 3, 3 });
 		static ByteBuffer cpu_sequence_PAL = new ByteBuffer(new byte[] { 3, 3, 3, 4, 3 });
-		public int cpu_step, cpu_stepcounter, cpu_deadcounter;
+		public int cpu_deadcounter;
 
 		public int oam_dma_index;
 		public bool oam_dma_exec = false;
@@ -394,140 +432,122 @@ namespace BizHawk.Emulation.Cores.Nintendo.NES
 		public bool do_the_reread;
 		public byte DB; //old data bus values from previous reads
 
-
-#if VS2012
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-#endif
 		internal void RunCpuOne()
 		{
-			cpu_stepcounter++;
-			if (cpu_stepcounter == cpu_sequence[cpu_step])
+			///////////////////////////
+			// OAM DMA start
+			///////////////////////////
+
+			if (sprdma_countdown > 0)
 			{
-				cpu_step++;
-				if (cpu_step == 5) cpu_step = 0;
-				cpu_stepcounter = 0;
-
-				///////////////////////////
-				// OAM DMA start
-				///////////////////////////
-
-				if (sprdma_countdown > 0)
+				sprdma_countdown--;
+				if (sprdma_countdown == 0)
 				{
-					sprdma_countdown--;
-					if (sprdma_countdown == 0)
+					if (cpu.TotalExecutedCycles % 2 == 0)
 					{
-						if (cpu.TotalExecutedCycles % 2 == 0)
-						{
-							cpu_deadcounter = 2;
-						}
-						else
-						{
-							cpu_deadcounter = 1;
-						}
-						oam_dma_exec = true;
-						cpu.RDY = false;
-						oam_dma_index = 0;
-						special_case_delay = true;
-					}
-				}
-
-				if (oam_dma_exec && apu.dmc_dma_countdown != 1 && !dmc_realign)
-				{
-					if (cpu_deadcounter == 0)
-					{
-
-						if (oam_dma_index % 2 == 0)
-						{
-							oam_dma_byte = ReadMemory(oam_dma_addr);
-							oam_dma_addr++;
-						}
-						else
-						{
-							WriteMemory(0x2004, oam_dma_byte);
-						}
-						oam_dma_index++;
-						if (oam_dma_index == 512) oam_dma_exec = false;
-
+						cpu_deadcounter = 2;
 					}
 					else
 					{
-						cpu_deadcounter--;
+						cpu_deadcounter = 1;
 					}
-				}
-				else if (apu.dmc_dma_countdown == 1)
-				{
-					dmc_realign = true;
-				}
-				else if (dmc_realign)
-				{
-					dmc_realign = false;
-				}
-				/////////////////////////////
-				// OAM DMA end
-				/////////////////////////////
-
-
-				/////////////////////////////
-				// dmc dma start
-				/////////////////////////////
-
-				if (apu.dmc_dma_countdown > 0)
-				{
+					oam_dma_exec = true;
 					cpu.RDY = false;
-					dmc_dma_exec = true;
-					apu.dmc_dma_countdown--;
-					if (apu.dmc_dma_countdown == 0)
-					{
-						apu.RunDMCFetch();
-						dmc_dma_exec = false;
-						apu.dmc_dma_countdown = -1;
-						do_the_reread = true;
-					}
+					oam_dma_index = 0;
+					special_case_delay = true;
 				}
-
-				/////////////////////////////
-				// dmc dma end
-				/////////////////////////////
-				apu.RunOne(true);
-
-				if (cpu.RDY && !IRQ_delay)
-				{
-					cpu.IRQ = _irq_apu || Board.IRQSignal;
-				}
-				else if (special_case_delay || apu.dmc_dma_countdown == 3)
-				{
-					cpu.IRQ = _irq_apu || Board.IRQSignal;
-					special_case_delay = false;
-				}
-
-				cpu.ExecuteOne();
-				apu.RunOne(false);
-
-				if (ppu.double_2007_read > 0)
-					ppu.double_2007_read--;
-
-				if (do_the_reread && cpu.RDY)
-					do_the_reread = false;
-
-				if (IRQ_delay)
-					IRQ_delay = false;
-
-				if (!dmc_dma_exec && !oam_dma_exec && !cpu.RDY)
-				{
-					cpu.RDY = true;
-					IRQ_delay = true;
-				}
-
-				ppu.ppu_open_bus_decay(0);
-
-				Board.ClockCPU();
-				ppu.PostCpuInstructionOne();
 			}
+
+			if (oam_dma_exec && apu.dmc_dma_countdown != 1 && !dmc_realign)
+			{
+				if (cpu_deadcounter == 0)
+				{
+
+					if (oam_dma_index % 2 == 0)
+					{
+						oam_dma_byte = ReadMemory(oam_dma_addr);
+						oam_dma_addr++;
+					}
+					else
+					{
+						WriteMemory(0x2004, oam_dma_byte);
+					}
+					oam_dma_index++;
+					if (oam_dma_index == 512) oam_dma_exec = false;
+
+				}
+				else
+				{
+					cpu_deadcounter--;
+				}
+			}
+			else if (apu.dmc_dma_countdown == 1)
+			{
+				dmc_realign = true;
+			}
+			else if (dmc_realign)
+			{
+				dmc_realign = false;
+			}
+			/////////////////////////////
+			// OAM DMA end
+			/////////////////////////////
+
+
+			/////////////////////////////
+			// dmc dma start
+			/////////////////////////////
+
+			if (apu.dmc_dma_countdown > 0)
+			{
+				cpu.RDY = false;
+				dmc_dma_exec = true;
+				apu.dmc_dma_countdown--;
+				if (apu.dmc_dma_countdown == 0)
+				{
+					apu.RunDMCFetch();
+					dmc_dma_exec = false;
+					apu.dmc_dma_countdown = -1;
+					do_the_reread = true;
+				}
+			}
+
+			/////////////////////////////
+			// dmc dma end
+			/////////////////////////////
+			apu.RunOne(true);
+
+			if (cpu.RDY && !IRQ_delay)
+			{
+				cpu.IRQ = _irq_apu || Board.IRQSignal;
+			}
+			else if (special_case_delay || apu.dmc_dma_countdown == 3)
+			{
+				cpu.IRQ = _irq_apu || Board.IRQSignal;
+				special_case_delay = false;
+			}
+
+			cpu.ExecuteOne();
+			apu.RunOne(false);
+
+			if (ppu.double_2007_read > 0)
+				ppu.double_2007_read--;
+
+			if (do_the_reread && cpu.RDY)
+				do_the_reread = false;
+
+			if (IRQ_delay)
+				IRQ_delay = false;
+
+			if (!dmc_dma_exec && !oam_dma_exec && !cpu.RDY)
+			{
+				cpu.RDY = true;
+				IRQ_delay = true;
+			}
+			
+			Board.ClockCPU();
 		}
 
-#if VS2012
-		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-#endif
 		public byte ReadReg(int addr)
 		{
 			byte ret_spec;
@@ -674,7 +694,12 @@ namespace BizHawk.Emulation.Cores.Nintendo.NES
 				case 0x4013:
 					apu.WriteReg(addr, val);
 					break;
-				case 0x4014: Exec_OAMDma(val); break;
+				case 0x4014:
+					//schedule a sprite dma event for beginning 1 cycle in the future.
+					//this receives 2 because thats just the way it works out.
+					oam_dma_addr = (ushort)(val << 8);
+					sprdma_countdown = 1;
+					break;
 				case 0x4015: apu.WriteReg(addr, val); break;
 				case 0x4016:
 					if (_isVS)
@@ -703,7 +728,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.NES
 		void write_joyport(byte value)
 		{
 			var si = new StrobeInfo(latched4016, value);
-			ControllerDeck.Strobe(si, Controller);
+			ControllerDeck.Strobe(si, _controller);
 			latched4016 = value;
 		}
 
@@ -715,11 +740,11 @@ namespace BizHawk.Emulation.Cores.Nintendo.NES
 			if (_isVS)
 			{
 				// for whatever reason, in VS left and right controller have swapped regs
-				ret = addr == 0x4017 ? ControllerDeck.ReadA(Controller) : ControllerDeck.ReadB(Controller);
+				ret = addr == 0x4017 ? ControllerDeck.ReadA(_controller) : ControllerDeck.ReadB(_controller);
 			}
 			else
 			{
-				ret = addr == 0x4016 ? ControllerDeck.ReadA(Controller) : ControllerDeck.ReadB(Controller);
+				ret = addr == 0x4016 ? ControllerDeck.ReadA(_controller) : ControllerDeck.ReadB(_controller);
 			}
 			
 			ret &= 0x1f;
@@ -731,15 +756,6 @@ namespace BizHawk.Emulation.Cores.Nintendo.NES
 		{
 			// at the moment, the new system doesn't support peeks
 			return 0;
-		}
-
-		void Exec_OAMDma(byte val)
-		{
-			//schedule a sprite dma event for beginning 1 cycle in the future.
-			//this receives 2 because thats just the way it works out.
-			oam_dma_addr = (ushort)(val << 8);
-
-			sprdma_countdown = 1;
 		}
 
 		/// <summary>
@@ -796,7 +812,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.NES
 			}
 			else if (addr < 0x4000)
 			{
-				ppu.WriteReg((addr & 0x07), value);
+				ppu.WriteReg(addr, value);
 			}
 			else if (addr < 0x4020)
 			{

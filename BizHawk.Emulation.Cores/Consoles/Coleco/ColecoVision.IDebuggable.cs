@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using BizHawk.Common.NumberExtensions;
 using BizHawk.Emulation.Common;
 
-
 namespace BizHawk.Emulation.Cores.ColecoVision
 {
 	public partial class ColecoVision : IDebuggable
@@ -13,36 +12,36 @@ namespace BizHawk.Emulation.Cores.ColecoVision
 		{
 			return new Dictionary<string, RegisterValue>
 			{
-				{ "A", Cpu.RegisterA },
-				{ "AF", Cpu.RegisterAF },
-				{ "B", Cpu.RegisterB },
-				{ "BC", Cpu.RegisterBC },
-				{ "C", Cpu.RegisterC },
-				{ "D", Cpu.RegisterD },
-				{ "DE", Cpu.RegisterDE },
-				{ "E", Cpu.RegisterE },
-				{ "F", Cpu.RegisterF },
-				{ "H", Cpu.RegisterH },
-				{ "HL", Cpu.RegisterHL },
-				{ "I", Cpu.RegisterI },
-				{ "IX", Cpu.RegisterIX },
-				{ "IY", Cpu.RegisterIY },
-				{ "L", Cpu.RegisterL },
-				{ "PC", Cpu.RegisterPC },
-				{ "R", Cpu.RegisterR },
-				{ "Shadow AF", Cpu.RegisterShadowAF },
-				{ "Shadow BC", Cpu.RegisterShadowBC },
-				{ "Shadow DE", Cpu.RegisterShadowDE },
-				{ "Shadow HL", Cpu.RegisterShadowHL },
-				{ "SP", Cpu.RegisterSP },
-				{ "Flag C", Cpu.RegisterF.Bit(0) },
-				{ "Flag N", Cpu.RegisterF.Bit(1) },
-				{ "Flag P/V", Cpu.RegisterF.Bit(2) },
-				{ "Flag 3rd", Cpu.RegisterF.Bit(3) },
-				{ "Flag H", Cpu.RegisterF.Bit(4) },
-				{ "Flag 5th", Cpu.RegisterF.Bit(5) },
-				{ "Flag Z", Cpu.RegisterF.Bit(6) },
-				{ "Flag S", Cpu.RegisterF.Bit(7) }
+				["A"] = _cpu.Regs[_cpu.A],
+				["AF"] = _cpu.Regs[_cpu.F] + (_cpu.Regs[_cpu.A] << 8),
+				["B"] = _cpu.Regs[_cpu.B],
+				["BC"] = _cpu.Regs[_cpu.C] + (_cpu.Regs[_cpu.B] << 8),
+				["C"] = _cpu.Regs[_cpu.C],
+				["D"] = _cpu.Regs[_cpu.D],
+				["DE"] = _cpu.Regs[_cpu.E] + (_cpu.Regs[_cpu.D] << 8),
+				["E"] = _cpu.Regs[_cpu.E],
+				["F"] = _cpu.Regs[_cpu.F],
+				["H"] = _cpu.Regs[_cpu.H],
+				["HL"] = _cpu.Regs[_cpu.L] + (_cpu.Regs[_cpu.H] << 8),
+				["I"] = _cpu.Regs[_cpu.I],
+				["IX"] = _cpu.Regs[_cpu.Ixl] + (_cpu.Regs[_cpu.Ixh] << 8),
+				["IY"] = _cpu.Regs[_cpu.Iyl] + (_cpu.Regs[_cpu.Iyh] << 8),
+				["L"] = _cpu.Regs[_cpu.L],
+				["PC"] = _cpu.Regs[_cpu.PCl] + (_cpu.Regs[_cpu.PCh] << 8),
+				["R"] = _cpu.Regs[_cpu.R],
+				["Shadow AF"] = _cpu.Regs[_cpu.F_s] + (_cpu.Regs[_cpu.A_s] << 8),
+				["Shadow BC"] = _cpu.Regs[_cpu.C_s] + (_cpu.Regs[_cpu.B_s] << 8),
+				["Shadow DE"] = _cpu.Regs[_cpu.E_s] + (_cpu.Regs[_cpu.D_s] << 8),
+				["Shadow HL"] = _cpu.Regs[_cpu.L_s] + (_cpu.Regs[_cpu.H_s] << 8),
+				["SP"] = _cpu.Regs[_cpu.Iyl] + (_cpu.Regs[_cpu.Iyh] << 8),
+				["Flag C"] = _cpu.FlagC,
+				["Flag N"] = _cpu.FlagN,
+				["Flag P/V"] = _cpu.FlagP,
+				["Flag 3rd"] = _cpu.Flag3,
+				["Flag H"] = _cpu.FlagH,
+				["Flag 5th"] = _cpu.Flag5,
+				["Flag Z"] = _cpu.FlagZ,
+				["Flag S"] = _cpu.FlagS
 			};
 		}
 
@@ -53,84 +52,96 @@ namespace BizHawk.Emulation.Cores.ColecoVision
 				default:
 					throw new InvalidOperationException();
 				case "A":
-					Cpu.RegisterA = (byte)value;
+					_cpu.Regs[_cpu.A] = (ushort)value;
 					break;
 				case "AF":
-					Cpu.RegisterAF = (byte)value;
+					_cpu.Regs[_cpu.F] = (ushort)(value & 0xFF);
+					_cpu.Regs[_cpu.A] = (ushort)(value & 0xFF00);
 					break;
 				case "B":
-					Cpu.RegisterB = (byte)value;
+					_cpu.Regs[_cpu.B] = (ushort)value;
 					break;
 				case "BC":
-					Cpu.RegisterBC = (byte)value;
+					_cpu.Regs[_cpu.C] = (ushort)(value & 0xFF);
+					_cpu.Regs[_cpu.B] = (ushort)(value & 0xFF00);
 					break;
 				case "C":
-					Cpu.RegisterC = (byte)value;
+					_cpu.Regs[_cpu.C] = (ushort)value;
 					break;
 				case "D":
-					Cpu.RegisterD = (byte)value;
+					_cpu.Regs[_cpu.D] = (ushort)value;
 					break;
 				case "DE":
-					Cpu.RegisterDE = (byte)value;
+					_cpu.Regs[_cpu.E] = (ushort)(value & 0xFF);
+					_cpu.Regs[_cpu.D] = (ushort)(value & 0xFF00);
 					break;
 				case "E":
-					Cpu.RegisterE = (byte)value;
+					_cpu.Regs[_cpu.E] = (ushort)value;
 					break;
 				case "F":
-					Cpu.RegisterF = (byte)value;
+					_cpu.Regs[_cpu.F] = (ushort)value;
 					break;
 				case "H":
-					Cpu.RegisterH = (byte)value;
+					_cpu.Regs[_cpu.H] = (ushort)value;
 					break;
 				case "HL":
-					Cpu.RegisterHL = (byte)value;
+					_cpu.Regs[_cpu.L] = (ushort)(value & 0xFF);
+					_cpu.Regs[_cpu.H] = (ushort)(value & 0xFF00);
 					break;
 				case "I":
-					Cpu.RegisterI = (byte)value;
+					_cpu.Regs[_cpu.I] = (ushort)value;
 					break;
 				case "IX":
-					Cpu.RegisterIX = (byte)value;
+					_cpu.Regs[_cpu.Ixl] = (ushort)(value & 0xFF);
+					_cpu.Regs[_cpu.Ixh] = (ushort)(value & 0xFF00);
 					break;
 				case "IY":
-					Cpu.RegisterIY = (byte)value;
+					_cpu.Regs[_cpu.Iyl] = (ushort)(value & 0xFF);
+					_cpu.Regs[_cpu.Iyh] = (ushort)(value & 0xFF00);
 					break;
 				case "L":
-					Cpu.RegisterL = (byte)value;
+					_cpu.Regs[_cpu.L] = (ushort)value;
 					break;
 				case "PC":
-					Cpu.RegisterPC = (ushort)value;
+					_cpu.Regs[_cpu.PCl] = (ushort)(value & 0xFF);
+					_cpu.Regs[_cpu.PCh] = (ushort)(value & 0xFF00);
 					break;
 				case "R":
-					Cpu.RegisterR = (byte)value;
+					_cpu.Regs[_cpu.R] = (ushort)value;
 					break;
 				case "Shadow AF":
-					Cpu.RegisterShadowAF = (byte)value;
+					_cpu.Regs[_cpu.F_s] = (ushort)(value & 0xFF);
+					_cpu.Regs[_cpu.A_s] = (ushort)(value & 0xFF00);
 					break;
 				case "Shadow BC":
-					Cpu.RegisterShadowBC = (byte)value;
+					_cpu.Regs[_cpu.C_s] = (ushort)(value & 0xFF);
+					_cpu.Regs[_cpu.B_s] = (ushort)(value & 0xFF00);
 					break;
 				case "Shadow DE":
-					Cpu.RegisterShadowDE = (byte)value;
+					_cpu.Regs[_cpu.E_s] = (ushort)(value & 0xFF);
+					_cpu.Regs[_cpu.D_s] = (ushort)(value & 0xFF00);
 					break;
 				case "Shadow HL":
-					Cpu.RegisterShadowHL = (byte)value;
+					_cpu.Regs[_cpu.L_s] = (ushort)(value & 0xFF);
+					_cpu.Regs[_cpu.H_s] = (ushort)(value & 0xFF00);
 					break;
 				case "SP":
-					Cpu.RegisterSP = (byte)value;
+					_cpu.Regs[_cpu.SPl] = (ushort)(value & 0xFF);
+					_cpu.Regs[_cpu.SPh] = (ushort)(value & 0xFF00);
 					break;
 			}
 		}
 
-		public IMemoryCallbackSystem MemoryCallbacks { get; private set; }
+		public IMemoryCallbackSystem MemoryCallbacks { get; }
 
-		public bool CanStep(StepType type) { return false; }
+		public bool CanStep(StepType type) => false;
 
 		[FeatureNotImplemented]
-		public void Step(StepType type) { throw new NotImplementedException(); }
-
-		public int TotalExecutedCycles
+		public void Step(StepType type)
 		{
-			get { return Cpu.TotalExecutedCycles; }
+			throw new NotImplementedException();
 		}
+
+		public int TotalExecutedCycles => _cpu.TotalExecutedCycles;
 	}
 }

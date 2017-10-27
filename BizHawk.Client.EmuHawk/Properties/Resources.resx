@@ -142,6 +142,9 @@
   <data name="A78Joystick" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\images\ControllerImages\A78Joystick.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
+  <data name="VBoyController" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\images\ControllerImages\VBoyController.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
   <data name="cdlogger" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\images\cdlogger.ico;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
@@ -201,9 +204,6 @@
   </data>
   <data name="calculator" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\images\calculator.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="emu7800" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\images\emu7800.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="ts_v_piano_16_green_blue" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\images\tastudio\ts_v_piano_16_green_blue.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
@@ -804,9 +804,6 @@
   <data name="ts_v_piano_10" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\images\tastudio\ts_v_piano_10.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="yabause" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\images\yabause.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
   <data name="watch" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\images\watch.ico;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
@@ -1040,9 +1037,6 @@
   </data>
   <data name="ts_v_piano_04_green_blue" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\images\tastudio\ts_v_piano_04_green_blue.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="meteor" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\images\meteor.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="HotKeys" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\images\HotKeys.png;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
@@ -1559,5 +1553,8 @@
   </data>
   <data name="WSW" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\images\WSW.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="NGPController" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\images\ControllerImages\NGPController.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
 </root>

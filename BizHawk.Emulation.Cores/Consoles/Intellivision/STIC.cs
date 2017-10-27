@@ -55,19 +55,20 @@ namespace BizHawk.Emulation.Cores.Intellivision
 		}
 
 		// gets called when a new border color is chosen
-		public void Update_Border()
+		private void Update_Border()
 		{
-			for (int i=0;i<176;i++)
+			for (int i = 0; i < 176; i++)
 			{
-				for (int j=0;j<8;j++)
+				for (int j = 0; j < 8; j++)
 				{
 					FrameBuffer[i + j * 176]= ColorToRGBA(Register[0x2C] & 0xF);
 					FrameBuffer[i + j * 176 + 176*200] = ColorToRGBA(Register[0x2C] & 0xF);
 				}
 			}
-			for (int j=8;j<(208-8);j++)
+
+			for (int j = 8; j < (208 - 8); j++)
 			{
-				for (int i=0;i<8;i++)
+				for (int i = 0; i < 8; i++)
 				{
 					FrameBuffer[i + j * 176] = ColorToRGBA(Register[0x2C] & 0xF);
 					FrameBuffer[i + 168 + j * 176] = ColorToRGBA(Register[0x2C] & 0xF);
@@ -75,21 +76,42 @@ namespace BizHawk.Emulation.Cores.Intellivision
 			}
 		}
 
-		public int VirtualWidth { get { return 176; } }
-		public int BufferWidth { get { return 176; } }
-		public int VirtualHeight { get { return 208; } }
-		public int BufferHeight { get { return 208; } }
-		public int BackgroundColor { get { return 0; } }
-		
+		public int VirtualWidth => 277;
+		public int BufferWidth => 176;
+		public int VirtualHeight => 208;
+		public int BufferHeight => 208;
+		public int BackgroundColor => 0;
+
+		public int VsyncNumerator
+		{
+			[FeatureNotImplemented]
+			get
+			{
+				return NullVideo.DefaultVsyncNum;
+			}
+		}
+
+		public int VsyncDenominator
+		{
+			[FeatureNotImplemented]
+			get
+			{
+				return NullVideo.DefaultVsyncDen;
+			}
+		}
+
 		public void Reset()
 		{
 			Sr1 = true;
 			Sr2 = true;
 
-			for (int i=0;i<64;i++)
+			for (int i = 0; i < 64; i++)
 			{
+				Register[i] = 0; 
 				write_reg(i, 0, false);
 			}
+
+			ColorSP = 0x0028;
 		}
 
 		public bool GetSr1()
@@ -146,12 +168,14 @@ namespace BizHawk.Emulation.Cores.Intellivision
 			}
 			else if (reg < 0x33)
 			{
-				if (reg==0x32)
+				if (reg == 0x32)
 				{
 					value = (ushort)((value & 0x3) | 0x3FFC);
 				}
 				else
+				{
 					value = (ushort)((value & 0x7) | 0x3FF8);
+				}
 			}
 			else if (reg < 0x40)
 			{
@@ -159,11 +183,12 @@ namespace BizHawk.Emulation.Cores.Intellivision
 			}
 			Register[reg] = value;
 
-			if (reg==0x21 && !poke)
+			if (reg == 0x21 && !poke)
 			{
 				Fgbg = true;
 			}
-			if (reg==0x20 && !poke)
+
+			if (reg == 0x20 && !poke)
 			{
 				active_display = true;
 			}
@@ -185,9 +210,10 @@ namespace BizHawk.Emulation.Cores.Intellivision
 						{
 							Fgbg = false;
 						}
+
 						return Register[addr];
 					}
-					else if (addr>= 0x0040 && addr <= 0x007F && (in_vb_2 | !active_display))
+					else if (addr >= 0x0040 && addr <= 0x007F && (in_vb_2 | !active_display))
 					{
 						return Register[addr - 0x0040];
 					}
@@ -220,6 +246,7 @@ namespace BizHawk.Emulation.Cores.Intellivision
 					}
 					break;
 			}
+
 			return null;
 		}
 
@@ -256,10 +283,11 @@ namespace BizHawk.Emulation.Cores.Intellivision
 					}
 					break;
 			}
+
 			return false;
 		}
 
-		public int ColorToRGBA(int color)
+		private int ColorToRGBA(int color)
 		{
 			switch (color)
 			{
@@ -296,6 +324,7 @@ namespace BizHawk.Emulation.Cores.Intellivision
 				case 15:
 					return 0xB51A58;
 			}
+
 			throw new ArgumentException("Specified color does not exist.");
 		}
 
@@ -304,15 +333,16 @@ namespace BizHawk.Emulation.Cores.Intellivision
 			// here we will also need to apply the 'delay' register values.
 			// this shifts the displayed portion of the screen relative to the BG
 			// The background is a 20x12 grid of "cards".
-
-			int bg=0;
+			int bg = 0;
 			for (int card_row = input_row; card_row < (input_row+1); card_row++)
 			{
 				for (int card_col = 0; card_col < 20; card_col++)
 				{
 					int buffer_offset = (card_row * 159 * 8) + (card_col * 8);
+
 					// The cards are stored sequentially in the System RAM.
 					ushort card = ReadMemory((ushort)(0x0200 + (card_row * 20) + card_col), false);
+
 					// Parse data from the card.
 					bool gram = ((card & 0x0800) != 0);
 					int card_num = card >> 3;
@@ -320,6 +350,7 @@ namespace BizHawk.Emulation.Cores.Intellivision
 					if (Fgbg)
 					{
 						bg = ((card >> 9) & 0x0008) | ((card >> 11) & 0x0004) | ((card >> 9) & 0x0003);
+
 						// Only 64 of the GROM's cards can be used in FGBG Mode.
 						card_num &= 0x003F;
 					}
@@ -331,6 +362,7 @@ namespace BizHawk.Emulation.Cores.Intellivision
 						{
 							// GRAM only has 64 cards.
 							card_num &= 0x003F;
+
 							// The foreground color has an additional bit when not in Colored Squares mode.
 							if (squares)
 								fg |= 0x0008;
@@ -340,6 +372,7 @@ namespace BizHawk.Emulation.Cores.Intellivision
 							// All of the GROM's 256 cards can be used in Color Stack Mode.
 							card_num &= 0x00FF;
 						}
+
 						if (!gram && squares)
 						{
 							// Colored Squares Mode.
@@ -350,9 +383,9 @@ namespace BizHawk.Emulation.Cores.Intellivision
 							colors[2] = (card >> 6) & 0x0007;
 							colors[3] = ((card >> 11) & 0x0004) | ((card >> 9) & 0x0003);
 
-							for (int z=0;z<4;z++)
+							for (int z = 0; z < 4; z++)
 							{
-								if (colors[z]==7)
+								if (colors[z] == 7)
 								{
 									colors[z] = Register[ColorSP] & 0x000F;
 									square_col[z] = 0;
@@ -374,6 +407,7 @@ namespace BizHawk.Emulation.Cores.Intellivision
 									}
 									int color;
 									int pixel = buffer_offset + (squares_row * 159) + squares_col;
+
 									// Determine the color of the quadrant the pixel is in.
 									if (squares_col < 4)
 									{
@@ -423,9 +457,11 @@ namespace BizHawk.Emulation.Cores.Intellivision
 									ColorSP = 0x0028;
 								}
 							}
+
 							bg = Register[ColorSP] & 0x000F;
 						}
 					}
+
 					for (int pict_row = 0; pict_row < 8; pict_row++)
 					{
 						// Each picture is stored sequentially in the GROM / GRAM, and so are their rows.
@@ -452,19 +488,21 @@ namespace BizHawk.Emulation.Cores.Intellivision
 							{
 								// The pixels go right as the bits get less significant.
 								BGBuffer[pixel] = ColorToRGBA(fg);
+
 								// also if the pixel is on set it in the collision matrix
 								// note that the collision field is attached to the lower right corner of the BG
 								// so we add 8 to x and 16 to y here
-								if ((card_col * 8 + (7-pict_col) + 8) < 167)
+								if ((card_col * 8 + (7 - pict_col) + 8) < 167)
 								{
-									Collision[card_col * 8 + (7-pict_col) + 8, (card_row * 8 + pict_row) * 2 + 16] = 1 << 8;
-									Collision[card_col * 8 + (7-pict_col) + 8, (card_row * 8 + pict_row) * 2 + 16 + 1] = 1 << 8;
+									Collision[card_col * 8 + (7 - pict_col) + 8, (card_row * 8 + pict_row) * 2 + 16] = 1 << 8;
+									Collision[card_col * 8 + (7 - pict_col) + 8, (card_row * 8 + pict_row) * 2 + 16 + 1] = 1 << 8;
 								}
 							}
 							else
 							{
 								BGBuffer[pixel] = ColorToRGBA(bg);
 							}
+
 							row >>= 1;
 						}
 					}
@@ -474,7 +512,6 @@ namespace BizHawk.Emulation.Cores.Intellivision
 			// now that we have the cards in BGbuffer, we can double vertical resolution to get Frame buffer
 			// there is a trick here in that we move the displayed area of the screen relative to the BG buffer
 			// this is done using the delay registers
-
 			int x_delay = Register[0x30] & 0x7;
 			int y_delay = Register[0x31] & 0x7;
 
@@ -484,7 +521,7 @@ namespace BizHawk.Emulation.Cores.Intellivision
 			int min_x = x_border == 0 ? x_delay : x_border;
 			int min_y = y_border == 0 ? y_delay : y_border;
 
-			for (int j=input_row*8;j < (input_row * 8)+8; j++)
+			for (int j = input_row * 8; j < (input_row * 8) + 8; j++)
 			{
 				for (int i = 0; i < 159; i++)
 				{
@@ -492,15 +529,14 @@ namespace BizHawk.Emulation.Cores.Intellivision
 					{
 						FrameBuffer[(j * 2) * 176 + (i+8) + BORDER_OFFSET] = BGBuffer[(j - y_delay) * 159 + i - x_delay];
 						FrameBuffer[(j * 2 + 1) * 176 + (i+8) + BORDER_OFFSET] = BGBuffer[(j - y_delay) * 159 + i - x_delay];
-					} else
+					}
+					else
 					{
 						FrameBuffer[(j * 2) * 176 + (i + 8) + BORDER_OFFSET] = ColorToRGBA(bg);
 						FrameBuffer[(j * 2 + 1) * 176 + (i + 8) + BORDER_OFFSET] = ColorToRGBA(bg);
 					} 
 				}
 			}
-
-			
 		}
 
 		// see for more details: http://spatula-city.org/~im14u2c/intv/jzintv-1.0-beta3/doc/programming/stic.txt
@@ -566,8 +602,11 @@ namespace BizHawk.Emulation.Cores.Intellivision
 				bool gram = attr.Bit(11);
 				byte loc_color = (byte)(attr & 7);
 				bool color_3 = attr.Bit(12);
+
 				if (color_3 && gram)
+				{
 					loc_color += 8;
+				}
 
 				bool priority = attr.Bit(13);
 				byte loc_x = (byte)(x & 0xFF);
@@ -583,7 +622,7 @@ namespace BizHawk.Emulation.Cores.Intellivision
 
 				ushort y_size = (ushort)(ysiz2 * ysiz4);
 				// setting yres implicitly uses an even card first
-				if (yres>1)
+				if (yres > 1)
 					card &= 0xFE;
 
 				// in GRAM mode only take the first 6 bits of the card number
@@ -606,7 +645,7 @@ namespace BizHawk.Emulation.Cores.Intellivision
 				}
 
 				// assign the y_mob, used to double vertical resolution
-				if (yres>1)
+				if (yres > 1)
 				{
 					for (int j = 0; j < 8; j++)
 					{
@@ -623,7 +662,7 @@ namespace BizHawk.Emulation.Cores.Intellivision
 					}
 				}
 
-				//flip mobs accordingly
+				// flip mobs accordingly
 				if (x_flip)
 				{
 					for (int j = 0; j < 8; j++)
@@ -639,7 +678,8 @@ namespace BizHawk.Emulation.Cores.Intellivision
 
 						mobs[j] = (byte)(temp_0 + temp_1 + temp_2 + temp_3 + temp_4 + temp_5 + temp_6 + temp_7);
 					}
-					if (yres>1)
+
+					if (yres > 1)
 					{
 						for (int j = 0; j < 8; j++)
 						{
@@ -669,7 +709,7 @@ namespace BizHawk.Emulation.Cores.Intellivision
 					byte temp_7 = mobs[7];
 
 
-					if (yres==1)
+					if (yres == 1)
 					{
 						mobs[0] = mobs[7];
 						mobs[1] = mobs[6];
@@ -702,7 +742,7 @@ namespace BizHawk.Emulation.Cores.Intellivision
 					}
 				}
 
-				//draw the mob and check for collision
+				// draw the mob and check for collision
 				for (int j = 0; j < 8; j++)
 				{
 					for (int k = 0; k < 8; k++)
@@ -715,14 +755,15 @@ namespace BizHawk.Emulation.Cores.Intellivision
 						{
 							cur_y = j * y_size + m;
 
-							if ((cur_x) < (167 - x_delay) && (loc_y * 2 + cur_y) < (208 - y_delay * 2) && pixel && vis && (cur_x) >= (8 - x_delay) && (loc_y * 2 + cur_y) >= (16 - y_delay * 2))
+							if ((cur_x) < (167 - x_delay) && (loc_y * 2 + cur_y) < (208 - y_delay * 2) && pixel && vis && cur_x >= (8 - x_delay) && (loc_y * 2 + cur_y) >= (16 - y_delay * 2))
 							{
 								if (!(priority && (Collision[cur_x, loc_y * 2 + cur_y]&0x100)>0))
-									FrameBuffer[(loc_y * 2 + cur_y - (16 - y_delay * 2)) * 176 + (cur_x + 8) - (8 - x_delay) + BORDER_OFFSET] = ColorToRGBA(loc_color);
+									FrameBuffer[(loc_y * 2 + cur_y - (16 - y_delay * 2)) * 176 + cur_x + x_delay + BORDER_OFFSET] = ColorToRGBA(loc_color);
 							}
-							//a MOB does not need to be visible for it to be interracting
-							//special case: a mob with x position 0 is counted as off
-							if (intr && pixel && (cur_x) <= 167 && (loc_y * 2 + cur_y) < 210 && loc_x != 0)
+
+							// a MOB does not need to be visible for it to be interracting
+							// special case: a mob with x position 0 is counted as off
+							if (intr && pixel && cur_x <= 167 && (loc_y * 2 + cur_y) < 210 && loc_x != 0)
 							{
 								Collision[cur_x, loc_y * 2 + cur_y] |= (ushort)(1 << i);
 							}
@@ -732,7 +773,7 @@ namespace BizHawk.Emulation.Cores.Intellivision
 								if ((cur_x + 1) < (167 - x_delay) && (loc_y * 2 + cur_y) < (208 - y_delay * 2) && pixel && vis && (cur_x + 1) >= (8 - x_delay) && (loc_y * 2 + cur_y) >= (16 - y_delay * 2))
 								{
 									if (!(priority && (Collision[cur_x + 1, loc_y * 2 + cur_y] & 0x100) > 0))
-										FrameBuffer[(loc_y * 2 + cur_y - (16 - y_delay * 2)) * 176 + (cur_x + 8) + 1 - (8 - x_delay) + BORDER_OFFSET] = ColorToRGBA(loc_color);
+										FrameBuffer[(loc_y * 2 + cur_y - (16 - y_delay * 2)) * 176 + cur_x + x_delay + 1 + BORDER_OFFSET] = ColorToRGBA(loc_color);
 								}
 								//a MOB does not need to be visible for it to be interracting
 								//special case: a mob with x position 0 is counted as off
@@ -759,14 +800,15 @@ namespace BizHawk.Emulation.Cores.Intellivision
 							{
 								cur_y = j * y_size + m;
 
-								if ((cur_x) < (167 - x_delay) && ((loc_y + 4 * y_size) * 2 + cur_y) < (208 - y_delay * 2) && pixel && vis && (cur_x) >= (8 - x_delay) && ((loc_y + 4 * y_size) * 2 + cur_y) >= (16 - y_delay * 2))
+								if ((cur_x) < (167 - x_delay) && ((loc_y + 4 * y_size) * 2 + cur_y) < (208 - y_delay * 2) && pixel && vis && cur_x >= (8 - x_delay) && ((loc_y + 4 * y_size) * 2 + cur_y) >= (16 - y_delay * 2))
 								{
 									if (!(priority && (Collision[cur_x, (loc_y + 4 * y_size) * 2 + cur_y] & 0x100) > 0))
-										FrameBuffer[((loc_y + 4 * y_size) * 2 + cur_y - (16 - y_delay * 2)) * 176 + (cur_x + 8) - (8 - x_delay) + BORDER_OFFSET] = ColorToRGBA(loc_color);
+										FrameBuffer[((loc_y + 4 * y_size) * 2 + cur_y - (16 - y_delay * 2)) * 176 + cur_x + x_delay + BORDER_OFFSET] = ColorToRGBA(loc_color);
 								}
-								//a MOB does not need to be visible for it to be interracting
-								//special case: a mob with x position 0 is counted as off
-								if (intr && pixel && (cur_x) <= 167 && ((loc_y + 4 * y_size) * 2 + cur_y) < 210 && loc_x != 0)
+
+								// a MOB does not need to be visible for it to be interracting
+								// special case: a mob with x position 0 is counted as off
+								if (intr && pixel && cur_x <= 167 && ((loc_y + 4 * y_size) * 2 + cur_y) < 210 && loc_x != 0)
 								{
 									Collision[cur_x, (loc_y + 4 * y_size) * 2 + cur_y] |= (ushort)(1 << i);
 								}
@@ -776,10 +818,11 @@ namespace BizHawk.Emulation.Cores.Intellivision
 									if ((cur_x + 1) < (167 - x_delay) && ((loc_y + 4 * y_size) * 2 + cur_y) < (208 - y_delay * 2) && pixel && vis && (cur_x + 1) >= (8 - x_delay) && ((loc_y + 4 * y_size) * 2 + cur_y) >= (16 - y_delay * 2))
 									{
 										if (!(priority && (Collision[cur_x + 1, (loc_y + 4 * y_size) * 2 + cur_y] & 0x100) > 0))
-											FrameBuffer[((loc_y + 4 * y_size) * 2 + cur_y - (16 - y_delay * 2)) * 176 + (cur_x + 8) + 1 - (8 - x_delay) + BORDER_OFFSET] = ColorToRGBA(loc_color);
+											FrameBuffer[((loc_y + 4 * y_size) * 2 + cur_y - (16 - y_delay * 2)) * 176 + cur_x + x_delay + 1 + BORDER_OFFSET] = ColorToRGBA(loc_color);
 									}
-									//a MOB does not need to be visible for it to be interracting
-									//special case: a mob with x position 0 is counted as off
+
+									// a MOB does not need to be visible for it to be interracting
+									// special case: a mob with x position 0 is counted as off
 									if (intr && pixel && (cur_x + 1) <= 167 && ((loc_y + 4 * y_size) * 2 + cur_y) < 210 && loc_x != 0)
 									{
 										Collision[cur_x + 1, (loc_y + 4 * y_size) * 2 + cur_y] |= (ushort)(1 << i);
@@ -793,8 +836,8 @@ namespace BizHawk.Emulation.Cores.Intellivision
 
 			// by now we have collision information for all 8 mobs and the BG
 			// so we can store data in the collision registers here
-			int x_border = Register[0x32].Bit(0) ? 15-x_delay : 7-x_delay;
-			int y_border = Register[0x32].Bit(1) ? 30-y_delay*2 : 14-y_delay*2;
+			int x_border = Register[0x32].Bit(0) ? 15 - x_delay : 7 - x_delay;
+			int y_border = Register[0x32].Bit(1) ? 30 - y_delay * 2 : 14 - y_delay * 2;
 
 			int x_border_2 = Register[0x32].Bit(0) ? 8 : 0;
 			int y_border_2 = Register[0x32].Bit(1) ? 16 : 0;
@@ -804,17 +847,17 @@ namespace BizHawk.Emulation.Cores.Intellivision
 				for (int j = 0; j < 210; j++)
 				{
 					// while we are here we can set collision detection bits for the border region
-					if (i == x_border || i == (167-x_delay))
+					if (i == x_border || i == (167 - x_delay))
 					{
 						Collision[i, j] |= (1 << 9);
 					}
-					if (j == y_border || j == y_border+1 || j == (208-y_delay*2) ||  j == (208 - y_delay * 2+1))
+					if (j == y_border || j == y_border + 1 || j == (208 - y_delay * 2) ||  j == (208 - y_delay * 2 + 1))
 					{
 						Collision[i, j] |= (1 << 9);
 					}
 
 					// and also make sure the border region is all the border color
-					if ((i-x_delay)>=0 && (i-x_delay)<=159 && (j-y_delay*2)>=0 && (j-y_delay*2)<192)
+					if ((i-x_delay)>=0 && (i-x_delay) <= 159 && (j-y_delay*2) >= 0 && (j-y_delay*2) < 192)
 					{
 						if ((i-x_delay) < x_border_2)
 							FrameBuffer[(j - y_delay*2) * 176 + ((i + 8) - x_delay) + BORDER_OFFSET] = ColorToRGBA(Register[0x2C] & 0xF);
@@ -829,7 +872,7 @@ namespace BizHawk.Emulation.Cores.Intellivision
 					}
 
 					// the extra condition here is to ignore only border/BG collsion bit set
-					if (Collision[i, j] != 0 && Collision[i,j] != (1<<9) && Collision[i,j] != (1<<8)) 
+					if (Collision[i, j] != 0 && Collision[i,j] != (1 << 9) && Collision[i,j] != (1 << 8)) 
 					{
 						for (int k = 0; k < 8; k++)
 						{
@@ -842,13 +885,12 @@ namespace BizHawk.Emulation.Cores.Intellivision
 							}
 						}
 					}
+
 					// after we check for collision, we can clear that value for the next frame.
 					Collision[i, j] = 0;
 				}
 			}
-
 		}
 		// end of Mobs function, we now have collision and graphics data for the mobs
-
 	}
 }

@@ -29,9 +29,9 @@ GBEXPORT void gambatte_destroy(GB *g)
 	delete g;
 }
 
-GBEXPORT int gambatte_load(GB *g, const char *romfiledata, unsigned romfilelength, long long now, unsigned flags)
+GBEXPORT int gambatte_load(GB *g, const char *romfiledata, unsigned romfilelength, const char *biosfiledata, unsigned biosfilelength, long long now, unsigned flags)
 {
-	int ret = g->load(romfiledata, romfilelength, now, flags);
+	int ret = g->load(romfiledata, romfilelength, biosfiledata, biosfilelength, now, flags);
 	return ret;
 }
 
@@ -107,6 +107,11 @@ GBEXPORT void gambatte_setscanlinecallback(GB *g, void (*callback)(), int sl)
 GBEXPORT void gambatte_setrtccallback(GB *g, unsigned int (*callback)())
 {
 	g->setRTCCallback(callback);
+}
+
+GBEXPORT void gambatte_setlinkcallback(GB *g, void (*callback)())
+{
+	g->setLinkCallback(callback);
 }
 
 GBEXPORT int gambatte_iscgb(GB *g)

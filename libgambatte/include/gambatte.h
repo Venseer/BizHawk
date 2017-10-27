@@ -60,7 +60,8 @@ public:
 	  * @param flags    ORed combination of LoadFlags.
 	  * @return 0 on success, negative value on failure.
 	  */
-	int load(const char *romfiledata, unsigned romfilelength, std::uint32_t now, unsigned flags = 0);
+	bool use_bios;
+	int load(const char *romfiledata, unsigned romfilelength, const char *biosfiledata, unsigned biosfilelength, std::uint32_t now, unsigned flags = 0);
 	
 	/** Emulates until at least 'samples' stereo sound samples are produced in the supplied buffer,
 	  * or until a video frame has been drawn.
@@ -109,6 +110,7 @@ public:
 	void setTraceCallback(void (*callback)(void *));
 	void setScanlineCallback(void (*callback)(), int sl);
 	void setRTCCallback(std::uint32_t (*callback)());
+	void setLinkCallback(void (*callback)());
 
 	/** Returns true if the currently loaded ROM image is treated as having CGB support. */
 	bool isCgb() const;

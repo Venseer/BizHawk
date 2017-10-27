@@ -1,8 +1,9 @@
 ﻿using System;
 using BizHawk.Emulation.Common;
 using System.Runtime.InteropServices;
+using BizHawk.Common;
 
-namespace BizHawk.Emulation.Cores.Consoles.Sega.gpgx64
+namespace BizHawk.Emulation.Cores.Consoles.Sega.gpgx
 {
 	public partial class GPGX : ISoundProvider
 	{
@@ -50,7 +51,8 @@ namespace BizHawk.Emulation.Cores.Consoles.Sega.gpgx64
 			Core.gpgx_get_audio(ref nsamp, ref src);
 			if (src != IntPtr.Zero)
 			{
-				Marshal.Copy(src, samples, 0, nsamp * 2);
+				using (_elf.EnterExit())
+					Marshal.Copy(src, samples, 0, nsamp * 2);
 			}
 		}
 	}

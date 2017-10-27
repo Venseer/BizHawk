@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
@@ -10,7 +10,7 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>BizHawk.Client.EmuHawk</RootNamespace>
     <AssemblyName>EmuHawk</AssemblyName>
-    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <StartupObject>BizHawk.Client.EmuHawk.Program</StartupObject>
     <IsWebBootstrapper>false</IsWebBootstrapper>
@@ -24,6 +24,7 @@
     <PublishUrl>publish\</PublishUrl>
     <Install>true</Install>
     <InstallFrom>Disk</InstallFrom>
+    <Prefer32Bit>false</Prefer32Bit>
     <UpdateEnabled>false</UpdateEnabled>
     <UpdateMode>Foreground</UpdateMode>
     <UpdateInterval>7</UpdateInterval>
@@ -35,72 +36,32 @@
     <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
     <UseApplicationTrust>false</UseApplicationTrust>
     <BootstrapperEnabled>true</BootstrapperEnabled>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
-    <DebugSymbols>true</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>false</Optimize>
-    <OutputPath>..\output\</OutputPath>
-    <DefineConstants>$(DefineConstants);DEBUG</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <PlatformTarget>x86</PlatformTarget>
-    <UseVSHostingProcess>false</UseVSHostingProcess>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
-    <DebugType>pdbonly</DebugType>
-    <Optimize>true</Optimize>
-    <OutputPath>..\output\</OutputPath>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <PlatformTarget>x86</PlatformTarget>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <UseVSHostingProcess>false</UseVSHostingProcess>
-    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
-    <DefineConstants>WINDOWS</DefineConstants>
+    <ResolveAssemblyWarnOrErrorOnTargetArchitectureMismatch>None</ResolveAssemblyWarnOrErrorOnTargetArchitectureMismatch>
   </PropertyGroup>
   <PropertyGroup>
     <NoWin32Manifest>true</NoWin32Manifest>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|AnyCPU'">
     <DebugSymbols>true</DebugSymbols>
-    <OutputPath>..\output64\</OutputPath>
+    <OutputPath>..\output\</OutputPath>
     <DefineConstants>WINDOWS;DEBUG</DefineConstants>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <DebugType>full</DebugType>
-    <PlatformTarget>x64</PlatformTarget>
-    <CodeAnalysisLogFile>..\output\EmuHawk.exe.CodeAnalysisLog.xml</CodeAnalysisLogFile>
-    <CodeAnalysisUseTypeNameInSuppression>true</CodeAnalysisUseTypeNameInSuppression>
-    <CodeAnalysisModuleSuppressionsFile>GlobalSuppressions.cs</CodeAnalysisModuleSuppressionsFile>
+    <PlatformTarget>AnyCPU</PlatformTarget>
     <UseVSHostingProcess>false</UseVSHostingProcess>
     <ErrorReport>prompt</ErrorReport>
     <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
-    <CodeAnalysisRuleSetDirectories>;C:\Program Files (x86)\Microsoft Visual Studio 10.0\Team Tools\Static Analysis Tools\\Rule Sets</CodeAnalysisRuleSetDirectories>
-    <CodeAnalysisIgnoreBuiltInRuleSets>true</CodeAnalysisIgnoreBuiltInRuleSets>
-    <CodeAnalysisRuleDirectories>;C:\Program Files (x86)\Microsoft Visual Studio 10.0\Team Tools\Static Analysis Tools\FxCop\\Rules</CodeAnalysisRuleDirectories>
-    <CodeAnalysisIgnoreBuiltInRules>true</CodeAnalysisIgnoreBuiltInRules>
-    <CodeAnalysisFailOnMissingRules>false</CodeAnalysisFailOnMissingRules>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
-    <OutputPath>..\output64\</OutputPath>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|AnyCPU'">
+    <OutputPath>..\output\</OutputPath>
     <DefineConstants>WINDOWS</DefineConstants>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <Optimize>true</Optimize>
     <DebugType>pdbonly</DebugType>
-    <PlatformTarget>x64</PlatformTarget>
-    <CodeAnalysisLogFile>..\output\EmuHawk.exe.CodeAnalysisLog.xml</CodeAnalysisLogFile>
-    <CodeAnalysisUseTypeNameInSuppression>true</CodeAnalysisUseTypeNameInSuppression>
-    <CodeAnalysisModuleSuppressionsFile>GlobalSuppressions.cs</CodeAnalysisModuleSuppressionsFile>
+    <PlatformTarget>AnyCPU</PlatformTarget>
     <UseVSHostingProcess>false</UseVSHostingProcess>
     <ErrorReport>prompt</ErrorReport>
     <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
-    <CodeAnalysisRuleSetDirectories>;C:\Program Files (x86)\Microsoft Visual Studio 10.0\Team Tools\Static Analysis Tools\\Rule Sets</CodeAnalysisRuleSetDirectories>
-    <CodeAnalysisIgnoreBuiltInRuleSets>true</CodeAnalysisIgnoreBuiltInRuleSets>
-    <CodeAnalysisRuleDirectories>;C:\Program Files (x86)\Microsoft Visual Studio 10.0\Team Tools\Static Analysis Tools\FxCop\\Rules</CodeAnalysisRuleDirectories>
-    <CodeAnalysisIgnoreBuiltInRules>true</CodeAnalysisIgnoreBuiltInRules>
-    <CodeAnalysisFailOnMissingRules>false</CodeAnalysisFailOnMissingRules>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="GongShell">
@@ -109,23 +70,22 @@
     <Reference Include="ICSharpCode.SharpZipLib">
       <HintPath>..\References\ICSharpCode.SharpZipLib.dll</HintPath>
     </Reference>
-    <Reference Include="LuaInterface, Version=2.0.4.35439, Culture=neutral, processorArchitecture=x86">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\References\$(Platform)\LuaInterface.dll</HintPath>
-    </Reference>
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="Microsoft.VisualBasic" Condition=" '$(OS)' == 'Windows_NT' " />
     <Reference Include="Newtonsoft.Json">
       <HintPath>..\References\Newtonsoft.Json.dll</HintPath>
     </Reference>
+    <Reference Include="NLua, Version=1.3.2.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\output\dll\nlua\NLua.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="OpenTK, Version=1.1.0.0, Culture=neutral, PublicKeyToken=bad199fe84eb3df4, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\References\OpenTK.dll</HintPath>
     </Reference>
-    <Reference Include="PresentationFramework" />
-    <Reference Include="SlimDX, Version=4.0.10.43, Culture=neutral, PublicKeyToken=b1b0c32fd1ffe4f9, processorArchitecture=x86">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\References\$(Platform)\SlimDX.dll</HintPath>
+    <Reference Include="SlimDX">
+      <HintPath>..\References\x64\SlimDX.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core">
@@ -166,6 +126,7 @@
     <Compile Include="ArchiveChooser.Designer.cs">
       <DependentUpon>ArchiveChooser.cs</DependentUpon>
     </Compile>
+    <Compile Include="ArgParser.cs" />
     <Compile Include="AVOut\AviWriter.cs" />
     <Compile Include="AVOut\AVSync.cs" />
     <Compile Include="AVOut\BmpVideoProvder.cs" />
@@ -367,6 +328,24 @@
     <Compile Include="config\InputWidget.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="config\ColecoVision\ColecoControllerSettings.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="config\ColecoVision\ColecoControllerSettings.Designer.cs">
+      <DependentUpon>ColecoControllerSettings.cs</DependentUpon>
+    </Compile>
+    <Compile Include="config\A7800\A7800ControllerSettings.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="config\A7800\A7800ControllerSettings.Designer.cs">
+      <DependentUpon>A7800ControllerSettings.cs</DependentUpon>
+    </Compile>
+    <Compile Include="config\A7800\A7800FilterSettings.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="config\A7800\A7800FilterSettings.Designer.cs">
+      <DependentUpon>A7800FilterSettings.cs</DependentUpon>
+    </Compile>
     <Compile Include="config\INTV\IntvControllerSettings.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -396,12 +375,6 @@
     </Compile>
     <Compile Include="config\N64\N64VideoPluginconfig.Designer.cs">
       <DependentUpon>N64VideoPluginconfig.cs</DependentUpon>
-    </Compile>
-    <Compile Include="config\N64\NewN64PluginSettings.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="config\N64\NewN64PluginSettings.Designer.cs">
-      <DependentUpon>NewN64PluginSettings.cs</DependentUpon>
     </Compile>
     <Compile Include="config\NES\DataTableDictionaryBind.cs" />
     <Compile Include="config\NES\NesControllerSettings.cs">
@@ -499,6 +472,12 @@
     </Compile>
     <Compile Include="config\SMS\SMSGraphicsConfig.Designer.cs">
       <DependentUpon>SMSGraphicsConfig.cs</DependentUpon>
+    </Compile>
+    <Compile Include="config\SNES\SNESControllerConfig.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="config\SNES\SNESControllerConfig.Designer.cs">
+      <DependentUpon>SNESControllerConfig.cs</DependentUpon>
     </Compile>
     <Compile Include="config\SNES\SNESOptions.cs">
       <SubType>Form</SubType>
@@ -598,9 +577,7 @@
     <Compile Include="CustomControls\ViewportPanel.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="CustomControls\VirtualListView.cs">
-      <SubType>Component</SubType>
-    </Compile>
+    <Compile Include="CustomControls\VirtualListView.cs" />
     <Compile Include="CustomControls\Win32.cs" />
     <Compile Include="DisplayManager\DisplayManager.cs" />
     <Compile Include="DisplayManager\DisplaySurface.cs" />
@@ -725,9 +702,10 @@
     <Compile Include="Sound\Output\XAudio2SoundOutput.cs" />
     <Compile Include="Sound\Sound.cs" />
     <Compile Include="Sound\Utilities\BufferedAsync.cs" />
+    <Compile Include="Sound\Utilities\SyncToAsyncProvider.cs" />
     <Compile Include="Sound\Utilities\SoundOutputProvider.cs" />
     <Compile Include="Throttle.cs" />
-    <Compile Include="ToolAttributes.cs" />
+    <Compile Include="ToolAttribute.cs" />
     <Compile Include="tools\AutoHawk.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -844,6 +822,12 @@
     <Compile Include="tools\GB\GBGPUView.Designer.cs">
       <DependentUpon>GBGPUView.cs</DependentUpon>
     </Compile>
+    <Compile Include="tools\GB\GBPrinterView.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="tools\GB\GBPrinterView.Designer.cs">
+      <DependentUpon>GBPrinterView.cs</DependentUpon>
+    </Compile>
     <Compile Include="tools\Genesis\GenDbgWind.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -921,6 +905,9 @@
     </Compile>
     <Compile Include="tools\Lua\LuaFunctionsForm.Designer.cs">
       <DependentUpon>LuaFunctionsForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="tools\Lua\LuaPictureBox.cs">
+      <SubType>Component</SubType>
     </Compile>
     <Compile Include="tools\Lua\LuaRegisteredFunctionsList.cs">
       <SubType>Form</SubType>
@@ -1082,7 +1069,12 @@
     <Compile Include="tools\TAStudio\PatternsForm.Designer.cs">
       <DependentUpon>PatternsForm.cs</DependentUpon>
     </Compile>
-    <Compile Include="tools\TAStudio\ScreenshotPopup.cs" />
+    <Compile Include="tools\TAStudio\ScreenshotForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="tools\TAStudio\ScreenshotForm.Designer.cs">
+      <DependentUpon>ScreenshotForm.cs</DependentUpon>
+    </Compile>
     <Compile Include="tools\TAStudio\TAStudio.Callbacks.cs">
       <DependentUpon>TAStudio.cs</DependentUpon>
       <SubType>Form</SubType>
@@ -1190,6 +1182,8 @@
     <Compile Include="tools\VirtualPads\schema\GenSchema.cs" />
     <Compile Include="tools\VirtualPads\schema\IntvSchema.cs" />
     <Compile Include="tools\VirtualPads\schema\LynxSchema.cs" />
+    <Compile Include="tools\VirtualPads\schema\NgpSchema.cs" />
+    <Compile Include="tools\VirtualPads\schema\PcfxSchema.cs" />
     <Compile Include="tools\VirtualPads\schema\PSXSchema.cs" />
     <Compile Include="tools\VirtualPads\schema\SatSchema.cs" />
     <Compile Include="tools\VirtualPads\schema\IVirtualPadSchema.cs" />
@@ -1197,9 +1191,11 @@
     <Compile Include="tools\VirtualPads\schema\NesSchema.cs" />
     <Compile Include="tools\VirtualPads\schema\PadSchema.cs" />
     <Compile Include="tools\VirtualPads\schema\PceSchema.cs" />
-    <Compile Include="tools\VirtualPads\schema\SchemaAttributes.cs" />
+    <Compile Include="tools\VirtualPads\schema\SchemaAttribute.cs" />
+    <Compile Include="tools\VirtualPads\schema\SGBSchema.cs" />
     <Compile Include="tools\VirtualPads\schema\SmsSchema.cs" />
     <Compile Include="tools\VirtualPads\schema\SnesSchema.cs" />
+    <Compile Include="tools\VirtualPads\schema\VirtualBoySchema.cs" />
     <Compile Include="tools\VirtualPads\schema\WonderSwanSchema.cs" />
     <Compile Include="tools\VirtualPads\VirtualPad.cs">
       <SubType>UserControl</SubType>
@@ -1320,6 +1316,15 @@
     <EmbeddedResource Include="config\InputCompositeWidget.resx">
       <DependentUpon>InputCompositeWidget.cs</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="config\ColecoVision\ColecoControllerSettings.resx">
+      <DependentUpon>ColecoControllerSettings.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="config\A7800\A7800ControllerSettings.resx">
+      <DependentUpon>A7800ControllerSettings.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="config\A7800\A7800FilterSettings.resx">
+      <DependentUpon>A7800FilterSettings.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="config\INTV\IntvControllerSettings.resx">
       <DependentUpon>IntvControllerSettings.cs</DependentUpon>
     </EmbeddedResource>
@@ -1331,9 +1336,6 @@
     </EmbeddedResource>
     <EmbeddedResource Include="config\N64\N64VideoPluginconfig.resx">
       <DependentUpon>N64VideoPluginconfig.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="config\N64\NewN64PluginSettings.resx">
-      <DependentUpon>NewN64PluginSettings.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="config\NES\NesControllerSettings.resx">
       <DependentUpon>NesControllerSettings.cs</DependentUpon>
@@ -1382,6 +1384,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="config\SMS\SMSGraphicsConfig.resx">
       <DependentUpon>SMSGraphicsConfig.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="config\SNES\SNESControllerConfig.resx">
+      <DependentUpon>SNESControllerConfig.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="config\SNES\SNESOptions.resx">
       <DependentUpon>SNESOptions.cs</DependentUpon>
@@ -1490,6 +1495,9 @@
     <EmbeddedResource Include="tools\GB\GBGPUView.resx">
       <DependentUpon>GBGPUView.cs</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="tools\GB\GBPrinterView.resx">
+      <DependentUpon>GBPrinterView.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="tools\Genesis\GenDbgWind.resx">
       <DependentUpon>GenDbgWind.cs</DependentUpon>
     </EmbeddedResource>
@@ -1596,6 +1604,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="tools\TAStudio\PlaybackBox.resx">
       <DependentUpon>PlaybackBox.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="tools\TAStudio\ScreenshotForm.resx">
+      <DependentUpon>ScreenshotForm.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="tools\TAStudio\TAStudio.resx">
       <DependentUpon>TAStudio.cs</DependentUpon>
@@ -1746,6 +1757,7 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
+    <None Include="app.config" />
     <None Include="images\FindHS.png" />
   </ItemGroup>
   <ItemGroup>
@@ -1791,7 +1803,6 @@
     <None Include="images\tastudio\icon_marker.png" />
     <EmbeddedResource Include="Resources\gens.ttf" />
     <EmbeddedResource Include="Resources\fceux.ttf" />
-    <None Include="Resources\HawkInLove.png" />
     <None Include="images\Circle.png" />
     <None Include="images\Cross.png" />
     <None Include="images\Square.png" />
@@ -1974,8 +1985,6 @@
     <None Include="images\thumbsdown.png" />
     <None Include="images\monitor.png" />
     <None Include="images\ppsspp.png" />
-    <None Include="images\meteor.png" />
-    <None Include="images\yabause.png" />
     <None Include="images\QuickNes.png" />
     <None Include="images\sms-icon.png" />
     <None Include="images\pcb.png" />
@@ -2072,6 +2081,7 @@
     <None Include="images\LightOn.png" />
     <None Include="images\Both.png" />
     <None Include="config\ControllerImages\A78Joystick.png" />
+    <None Include="config\ControllerImages\VBoyController.png" />
     <None Include="config\ControllerImages\IntVController.png" />
     <None Include="config\ControllerImages\Lynx.png" />
     <Content Include="config\ControllerImages\N64.png" />
@@ -2083,7 +2093,6 @@
     <None Include="images\checkbox.png" />
     <None Include="images\Erase.png" />
     <None Include="images\bsnes.png" />
-    <None Include="images\emu7800.png" />
     <None Include="images\genplus.png" />
     <None Include="images\gambatte.png" />
     <None Include="images\dual.png" />
@@ -2099,7 +2108,7 @@
     <None Include="images\JumpTo.png" />
     <None Include="images\ENE.png" />
     <None Include="images\ESE.png" />
-    <None Include="images\5757344.png" />
+    <None Include="images\ControllerImages\NGPController.png" />
     <Content Include="images\logo.ico" />
     <None Include="images\Paste.png" />
     <None Include="images\reboot.png" />
@@ -2153,7 +2162,8 @@
   </Target>
   -->
   <PropertyGroup>
-    <PostBuildEvent>..\Build\BizHawk.Build.Tool.exe LARGEADDRESS --value 1 --target "$(TargetPath)"</PostBuildEvent>
+    <PostBuildEvent>
+    </PostBuildEvent>
   </PropertyGroup>
   <PropertyGroup>
     <PreBuildEvent Condition=" '$(OS)' == 'Windows_NT' ">"$(SolutionDir)subwcrev.bat" "$(ProjectDir)"</PreBuildEvent>

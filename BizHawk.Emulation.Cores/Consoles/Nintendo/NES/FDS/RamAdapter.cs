@@ -67,14 +67,17 @@ namespace BizHawk.Emulation.Cores.Nintendo.NES
 				byte[] fileheader = br.ReadBytes(16);
 				if (fileheader[0] != 0x03)
 				{
-					throw new Exception("Corrupt FDS block 3");
+					// Instead of exceptions, display strong warnings
+					Console.WriteLine("WARNING: INVALID FILE, BLOCK 3 ERROR");
+					//throw new Exception("Corrupt FDS block 3");
 				}
 				int filesize = fileheader[13] + fileheader[14] * 256;
 
 				byte[] file = br.ReadBytes(filesize + 1);
 				if (file[0] != 0x04)
 				{
-					throw new Exception("Corrupt FDS block 4");
+					Console.WriteLine("WARNING: INVALID FILE, BLOCK 4 ERROR");
+					//throw new Exception("Corrupt FDS block 4");
 				}
 
 				WriteBlock(ret, fileheader, 122);
@@ -212,8 +215,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.NES
 			state = RamAdapterState.IDLE;
 			SetCycles();
 			Console.WriteLine("FDS: Disk ejected");
-			if (DriveLightCallback != null)
-				DriveLightCallback(false);
+			DriveLightCallback?.Invoke(false);
 		}
 
 		/// <summary>
@@ -234,8 +236,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.NES
 			SetCycles();
 			Console.WriteLine("FDS: Disk Inserted");
 			originaldisk = (byte[])disk.Clone();
-			if (DriveLightCallback != null)
-				DriveLightCallback(false);
+			DriveLightCallback?.Invoke(false);
 		}
 
 		/// <summary>
@@ -383,8 +384,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.NES
 						state = RamAdapterState.SPINUP;
 						SetCycles();
 					//}
-						if (DriveLightCallback != null)
-							DriveLightCallback(true);
+					DriveLightCallback?.Invoke(true);
 				}
 			}
 			if ((value & 2) != 0)
@@ -495,8 +495,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.NES
 							state = RamAdapterState.RESET;
 							transferreset = false;
 							//numcrc = 0;
-							if (DriveLightCallback != null)
-								DriveLightCallback(false);
+							DriveLightCallback?.Invoke(false);
 						}
 						SetCycles();
 						break;
@@ -509,16 +508,14 @@ namespace BizHawk.Emulation.Cores.Nintendo.NES
 						transferreset = false;
 						//numcrc = 0;
 						// Console.WriteLine("FDS: Return or Insert Complete");
-						if (DriveLightCallback != null)
-							DriveLightCallback(false);
+						DriveLightCallback?.Invoke(false);
 						break;
 					case RamAdapterState.SPINUP:
 						state = RamAdapterState.RUNNING;
 						SetCycles();
 						//transferreset = false; // this definitely does not happen.
 						// Console.WriteLine("FDS: Spin up complete!  Disk is running");
-						if (DriveLightCallback != null)
-							DriveLightCallback(true);
+						DriveLightCallback?.Invoke(true);
 						break;
 
 					case RamAdapterState.IDLE:

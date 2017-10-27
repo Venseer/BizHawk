@@ -7,10 +7,7 @@ namespace BizHawk.Emulation.Cores.Atari.Atari2600
 {
 	public partial class Atari2600 : IStatable
 	{
-		public bool BinarySaveStatesPreferred
-		{
-			get { return false; }
-		}
+		public bool BinarySaveStatesPreferred => false;
 
 		public void SaveStateText(TextWriter writer)
 		{
@@ -45,18 +42,18 @@ namespace BizHawk.Emulation.Cores.Atari.Atari2600
 		{
 			ser.BeginSection("A2600");
 			Cpu.SyncState(ser);
-			ser.Sync("ram", ref this.Ram, false);
+			ser.Sync("ram", ref _ram, false);
 			ser.Sync("Lag", ref _lagcount);
 			ser.Sync("Frame", ref _frame);
 			ser.Sync("IsLag", ref _islag);
-			ser.Sync("frameStartPending", ref _frameStartPending);
+			ser.Sync("cyc_counter", ref cyc_counter);
 			ser.Sync("leftDifficultySwitchPressed", ref _leftDifficultySwitchPressed);
 			ser.Sync("rightDifficultySwitchPressed", ref _rightDifficultySwitchPressed);
 			ser.Sync("leftDifficultySwitchHeld", ref _leftDifficultySwitchHeld);
 			ser.Sync("rightDifficultySwitchHeld", ref _rightDifficultySwitchHeld);
 
 			_tia.SyncState(ser);
-			M6532.SyncState(ser);
+			_m6532.SyncState(ser);
 			ser.BeginSection("Mapper");
 			_mapper.SyncState(ser);
 			ser.EndSection();

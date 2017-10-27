@@ -39,6 +39,7 @@ class Memory {
 	void (*writeCallback)(unsigned);
 	void (*execCallback)(unsigned);
 	CDCallback cdCallback;
+	void (*linkCallback)();
 
 	unsigned (*getInput)();
 	unsigned long divLastUpdate;
@@ -86,6 +87,10 @@ public:
 	
 	bool loaded() const { return cart.loaded(); }
 	const char * romTitle() const { return cart.romTitle(); }
+
+	void bios_reset(int setting) {
+		nontrivial_ff_write(0x50, setting, 0);
+	}
 
 	int debugGetLY() const { return display.debugGetLY(); }
 
@@ -244,7 +249,7 @@ public:
 	unsigned long event(unsigned long cycleCounter);
 	unsigned long resetCounters(unsigned long cycleCounter);
 
-	int loadROM(const char *romfiledata, unsigned romfilelength, bool forceDmg, bool multicartCompat);
+	int loadROM(const char *romfiledata, unsigned romfilelength, const char *biosfiledata, unsigned biosfilelength, bool forceDmg, bool multicartCompat);
 
 	void setInputGetter(unsigned (*getInput)()) {
 		this->getInput = getInput;
@@ -269,6 +274,10 @@ public:
 
 	void setRTCCallback(std::uint32_t (*callback)()) {
 		cart.setRTCCallback(callback);
+	}
+
+	void setLinkCallback(void (*callback)()) {
+		this->linkCallback = callback;
 	}
 
 	void setEndtime(unsigned long cc, unsigned long inc);

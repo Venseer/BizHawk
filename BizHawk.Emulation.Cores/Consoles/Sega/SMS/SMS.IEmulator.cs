@@ -4,7 +4,7 @@ namespace BizHawk.Emulation.Cores.Sega.MasterSystem
 {
 	public sealed partial class SMS : IEmulator
 	{
-		public IEmulatorServiceProvider ServiceProvider { get; private set; }
+		public IEmulatorServiceProvider ServiceProvider { get; }
 
 		public ControllerDefinition ControllerDefinition
 		{
@@ -15,31 +15,45 @@ namespace BizHawk.Emulation.Cores.Sega.MasterSystem
 					return GGController;
 				}
 
-				return SmsController;
+				switch(Settings.ControllerType)
+				{
+					case "Paddle":
+						return SMSPaddleController;
+					case "Light Phaser":
+						// scale the vertical to the display mode
+						SMSLightPhaserController.FloatRanges[1] = new ControllerDefinition.FloatRange(0, Vdp.FrameHeight / 2, Vdp.FrameHeight - 1);
+
+						return SMSLightPhaserController;
+					default:
+						return SmsController;
+				}
 			}
 		}
 
-		public IController Controller { get; set; }
-
-		public void FrameAdvance(bool render, bool rendersound)
+		public void FrameAdvance(IController controller, bool render, bool rendersound)
 		{
+			_controller = controller;
 			_lagged = true;
-			Frame++;
+			_frame++;
 			PSG.BeginFrame(Cpu.TotalExecutedCycles);
-			Cpu.Debug = Tracer.Enabled;
+
 			if (!IsGameGear)
 			{
 				PSG.StereoPanning = Settings.ForceStereoSeparation ? ForceStereoByte : (byte)0xFF;
 			}
 
-			if (Cpu.Debug && Cpu.Logger == null) // TODO, lets not do this on each frame. But lets refactor CoreComm/CoreComm first
+			if (Tracer.Enabled)
 			{
-				Cpu.Logger = (s) => Tracer.Put(s);
+				Cpu.TraceCallback = s => Tracer.Put(s);
+			}
+			else
+			{
+				Cpu.TraceCallback = null;
 			}
 
 			if (IsGameGear == false)
 			{
-				Cpu.NonMaskableInterrupt = Controller.IsPressed("Pause");
+				Cpu.NonMaskableInterrupt = controller.IsPressed("Pause");
 			}
 
 			if (IsGame3D && Settings.Fix3D)
@@ -63,21 +77,23 @@ namespace BizHawk.Emulation.Cores.Sega.MasterSystem
 			}
 		}
 
-		public string SystemId { get { return "SMS"; } }
+	    public int Frame => _frame;
 
-		public bool DeterministicEmulation { get { return true; } }
+		public string SystemId => "SMS";
 
-		public string BoardName { get { return null; } }
+		public bool DeterministicEmulation => true;
 
 		public void ResetCounters()
 		{
-			Frame = 0;
+			_frame = 0;
 			_lagCount = 0;
 			_isLag = false;
 		}
 
-		public CoreComm CoreComm { get; private set; }
+		public CoreComm CoreComm { get; }
 
-		public void Dispose() { }
+		public void Dispose()
+		{
+		}
 	}
 }

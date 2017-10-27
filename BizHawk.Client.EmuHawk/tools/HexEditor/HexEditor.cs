@@ -73,7 +73,7 @@ namespace BizHawk.Client.EmuHawk
 
 		private long _row;
 		private long _addr;
-		private string _findStr = string.Empty;
+		private string _findStr = "";
 		private bool _mouseIsDown;
 		private byte[] _rom;
 		private MemoryDomain _romDomain;
@@ -159,12 +159,12 @@ namespace BizHawk.Client.EmuHawk
 			// Do nothing
 		}
 
-		private string _lastRom = string.Empty;
+		private string _lastRom = "";
 
 		public void Restart()
 		{
 			_rom = GetRomBytes();
-			_romDomain = MemoryDomain.FromByteArray("File on Disk", MemoryDomain.Endian.Little, _rom);
+			_romDomain = new MemoryDomainByteArray("File on Disk", MemoryDomain.Endian.Little, _rom, true, 1);
 
 			if (_domain.Name == _romDomain.Name)
 			{
@@ -234,7 +234,7 @@ namespace BizHawk.Client.EmuHawk
 		{
 			long found = -1;
 
-			var search = value.Replace(" ", string.Empty).ToUpper();
+			var search = value.Replace(" ", "").ToUpper();
 			if (string.IsNullOrEmpty(search))
 			{
 				return;
@@ -290,7 +290,7 @@ namespace BizHawk.Client.EmuHawk
 		{
 			long found = -1;
 
-			var search = value.Replace(" ", string.Empty).ToUpper();
+			var search = value.Replace(" ", "").ToUpper();
 			if (string.IsNullOrEmpty(search))
 			{
 				return;
@@ -526,7 +526,16 @@ namespace BizHawk.Client.EmuHawk
 				{
 					if (_addr + j + DataSize <= _domain.Size)
 					{
-						rowStr.AppendFormat(_digitFormatString, MakeValue(_addr + j));
+						int t_val = 0;
+						int t_next = 0;
+
+						for (int k = 0; k < DataSize; k++)
+						{
+							t_next = MakeValue(1, _addr + j + k);
+							t_val += (t_next << ((DataSize - k - 1) * 8));
+						}
+
+						rowStr.AppendFormat(_digitFormatString, t_val);
 					}
 					else
 					{
@@ -569,7 +578,7 @@ namespace BizHawk.Client.EmuHawk
 		{
 			if (Global.CheatList.IsActive(_domain, address))
 			{
-				return Global.CheatList.GetCheatValue(_domain, address, (WatchSize)DataSize ).Value;
+				return Global.CheatList.GetCheatValue(_domain, address, (WatchSize)dataSize ).Value;
 			}
 
 			switch (dataSize)
@@ -755,11 +764,11 @@ namespace BizHawk.Client.EmuHawk
 			{
 				default:
 				case 1:										
-					return Watch.GenerateWatch(_domain, address, WatchSize.Byte, Client.Common.DisplayType.Hex, BigEndian, string.Empty);
-                case 2:
-					return Watch.GenerateWatch(_domain, address, WatchSize.Word, Client.Common.DisplayType.Hex, BigEndian, string.Empty);
+					return Watch.GenerateWatch(_domain, address, WatchSize.Byte, Client.Common.DisplayType.Hex, BigEndian, "");
+				case 2:
+					return Watch.GenerateWatch(_domain, address, WatchSize.Word, Client.Common.DisplayType.Hex, BigEndian, "");
 				case 4:
-					return Watch.GenerateWatch(_domain, address, WatchSize.DWord, Client.Common.DisplayType.Hex, BigEndian, string.Empty);
+					return Watch.GenerateWatch(_domain, address, WatchSize.DWord, Client.Common.DisplayType.Hex, BigEndian, "");
 			}
 		}
 
@@ -910,7 +919,7 @@ namespace BizHawk.Client.EmuHawk
 
 			var result = sfd.ShowHawkDialog();
 
-			return result == DialogResult.OK ? sfd.FileName : string.Empty;
+			return result == DialogResult.OK ? sfd.FileName : "";
 		}
 
 		private string GetSaveFileFromUser()
@@ -933,7 +942,7 @@ namespace BizHawk.Client.EmuHawk
 
 			var result = sfd.ShowHawkDialog();
 
-			return result == DialogResult.OK ? sfd.FileName : string.Empty;
+			return result == DialogResult.OK ? sfd.FileName : "";
 		}
 
 		private void ResetScrollBar()
@@ -1069,7 +1078,7 @@ namespace BizHawk.Client.EmuHawk
 
 		private string MakeNibbles()
 		{
-			var str = string.Empty;
+			var str = "";
 			for (var x = 0; x < (DataSize * 2); x++)
 			{
 				if (_nibbles[x] != 'G')
@@ -1181,7 +1190,7 @@ namespace BizHawk.Client.EmuHawk
 				return string.Format(_digitFormatString, MakeValue(address)).Trim();
 			}
 			
-			return string.Empty;
+			return "";
 		}
 
 		private string GetFindValues()
@@ -1192,7 +1201,7 @@ namespace BizHawk.Client.EmuHawk
 				return _secondaryHighlightedAddresses.Aggregate(values, (current, x) => current + ValueString(x));
 			}
 			
-			return string.Empty;
+			return "";
 		}
 
 		private void HighlightSecondaries(string value, long found)
@@ -1271,6 +1280,35 @@ namespace BizHawk.Client.EmuHawk
 			if (!string.IsNullOrEmpty(path))
 			{
 				SaveFileBinary(path);
+			}
+		}
+
+		private void importAsBinaryToolStripMenuItem_Click(object sender, EventArgs e)
+		{
+			if(!_domain.CanPoke())
+			{
+				MessageBox.Show("This Memory Domain can't be Poked; so importing can't work");
+				return;
+			}
+
+			var sfd = new OpenFileDialog
+			{
+				Filter = "Binary (*.bin)|*.bin|Save Files (*.sav)|*.sav|All Files|*.*",
+				RestoreDirectory = true,
+			};
+
+			var result = sfd.ShowHawkDialog();
+			if(result != System.Windows.Forms.DialogResult.OK) return;
+			
+			var path = sfd.FileName;
+
+			using (var inf = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read))
+			{
+				long todo = Math.Min(inf.Length, _domain.Size);
+				for (long i = 0; i < todo; i++)
+				{
+					_domain.PokeByte(i, (byte)inf.ReadByte());
+				}
 			}
 		}
 
@@ -1460,7 +1498,13 @@ namespace BizHawk.Client.EmuHawk
 			}
 
 			UpdateValues();
-	}
+		}
+
+		private bool _lastSearchWasText = false;
+		private void SearchTypeChanged(bool isText)
+		{
+			_lastSearchWasText = isText;
+		}
 
 		private void FindMenuItem_Click(object sender, EventArgs e)
 		{
@@ -1470,7 +1514,9 @@ namespace BizHawk.Client.EmuHawk
 				_hexFind = new HexFind
 				{
 					InitialLocation = PointToScreen(AddressesLabel.Location),
-					InitialValue = _findStr
+					InitialValue = _findStr,
+					SearchTypeChangedCallback = SearchTypeChanged,
+					InitialText = _lastSearchWasText
 				};
 
 				_hexFind.Show();
@@ -2276,7 +2322,7 @@ namespace BizHawk.Client.EmuHawk
 					else
 					{
 						_secondaryHighlightedAddresses.Clear();
-						_findStr = string.Empty;
+						_findStr = "";
 						SetHighlighted(pointedAddress);
 					}
 
@@ -2348,6 +2394,7 @@ namespace BizHawk.Client.EmuHawk
 			MessageBox.Show(str);
 
 		}
+
 
 	}
 } 

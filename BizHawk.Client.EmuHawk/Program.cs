@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Linq;
+using System.Diagnostics;
 using System.IO;
 using System.Collections.Generic;
 using System.Reflection;
@@ -120,7 +122,7 @@ namespace BizHawk.Client.EmuHawk
 			BizHawk.Client.Common.StringLogUtil.DefaultToDisk = Global.Config.MoviesOnDisk;
 			BizHawk.Client.Common.StringLogUtil.DefaultToAWE = Global.Config.MoviesInAWE;
 
-			//super hacky! this needs to be done first. still not worth the trouble to make this system fully proper
+			// super hacky! this needs to be done first. still not worth the trouble to make this system fully proper
 			for (int i = 0; i < args.Length; i++)
 			{
 				var arg = args[i].ToLower();
@@ -130,13 +132,12 @@ namespace BizHawk.Client.EmuHawk
 				}
 			}
 
-			//create IGL context. we do this whether or not the user has selected OpenGL, so that we can run opengl-based emulator cores
+			// create IGL context. we do this whether or not the user has selected OpenGL, so that we can run opengl-based emulator cores
 			GlobalWin.IGL_GL = new Bizware.BizwareGL.Drivers.OpenTK.IGL_TK(2, 0, false);
 
-			//setup the GL context manager, needed for coping with multiple opengl cores vs opengl display method
+			// setup the GL context manager, needed for coping with multiple opengl cores vs opengl display method
 			GLManager.CreateInstance(GlobalWin.IGL_GL);
 			GlobalWin.GLManager = GLManager.Instance;
-			GlobalWin.CR_GL = GlobalWin.GLManager.GetContextForIGL(GlobalWin.GL);
 
 			//now create the "GL" context for the display method. we can reuse the IGL_TK context if opengl display method is chosen
 		REDO_DISPMETHOD:
@@ -152,7 +153,8 @@ namespace BizHawk.Client.EmuHawk
 				{
 					var e2 = new Exception("Initialization of Direct3d 9 Display Method failed; falling back to GDI+", ex);
 					new ExceptionBox(e2).ShowDialog();
-					//fallback
+
+					// fallback
 					Global.Config.DispMethod = Config.EDispMethod.GdiPlus;
 					goto REDO_DISPMETHOD;
 				}
@@ -160,27 +162,21 @@ namespace BizHawk.Client.EmuHawk
 			else
 			{
 				GlobalWin.GL = GlobalWin.IGL_GL;
-				//check the opengl version and dont even try to boot this crap up if its too old
+
+				// check the opengl version and dont even try to boot this crap up if its too old
 				int version = GlobalWin.IGL_GL.Version;
 				if (version < 200)
 				{
-					//fallback
+					// fallback
 					Global.Config.DispMethod = Config.EDispMethod.GdiPlus;
 					goto REDO_DISPMETHOD;
 				}
 			}
 
-			//try creating a GUI Renderer. If that doesn't succeed. we fallback
-			//TODO - need a factory for the GUI Renderer, I hate pasting this code
+			// try creating a GUI Renderer. If that doesn't succeed. we fallback
 			try
 			{
-				BizHawk.Bizware.BizwareGL.IGuiRenderer Renderer;
-				if (GlobalWin.GL is BizHawk.Bizware.BizwareGL.Drivers.OpenTK.IGL_TK)
-					Renderer = new BizHawk.Bizware.BizwareGL.GuiRenderer(GlobalWin.GL);
-				else if (GlobalWin.GL is BizHawk.Bizware.BizwareGL.Drivers.SlimDX.IGL_SlimDX9)
-					Renderer = new BizHawk.Bizware.BizwareGL.GuiRenderer(GlobalWin.GL);
-				else
-					Renderer = new BizHawk.Bizware.BizwareGL.Drivers.GdiPlus.GDIPlusGuiRenderer((BizHawk.Bizware.BizwareGL.Drivers.GdiPlus.IGL_GdiPlus)GlobalWin.GL);
+				using (GlobalWin.GL.CreateRenderer()) { }
 			}
 			catch(Exception ex)
 			{
@@ -199,8 +195,8 @@ namespace BizHawk.Client.EmuHawk
 			string dllDir = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "dll");
 			SetDllDirectory(dllDir);
 
-			if (System.Diagnostics.Debugger.IsAttached)
-			{ // Let the debugger handle errors
+			try
+			{
 #if WINDOWS
 				if (Global.Config.SingleInstanceMode)
 				{
@@ -222,84 +218,39 @@ namespace BizHawk.Client.EmuHawk
 						mf.Show();
 						mf.Text = title;
 
-						GlobalWin.ExitCode = mf.ProgramRunLoop();
+						try
+						{
+							GlobalWin.ExitCode = mf.ProgramRunLoop();
+						}
+						catch (Exception e) when (!Debugger.IsAttached && !VersionInfo.DeveloperBuild && Global.MovieSession.Movie.IsActive)
+						{
+							var result = MessageBox.Show(
+								"EmuHawk has thrown a fatal exception and is about to close.\nA movie has been detected. Would you like to try to save?\n(Note: Depending on what caused this error, this may or may not succeed)",
+								"Fatal error: " + e.GetType().Name,
+								MessageBoxButtons.YesNo,
+								MessageBoxIcon.Exclamation
+								);
+							if (result == DialogResult.Yes)
+							{
+								Global.MovieSession.Movie.Save();
+							}
+						}
 					}
 				}
 			}
-			else
-			{ // Display error message windows
-				try
+			catch (Exception e) when (!Debugger.IsAttached)
+			{
+				new ExceptionBox(e).ShowDialog();
+			}
+			finally
+			{
+				if (GlobalWin.Sound != null)
 				{
-#if WINDOWS
-					if (Global.Config.SingleInstanceMode)
-					{
-						try
-						{
-							new SingleInstanceController(args).Run(args);
-						}
-						catch (ObjectDisposedException)
-						{
-							/*Eat it, MainForm disposed itself and Run attempts to dispose of itself.  Eventually we would want to figure out a way to prevent that, but in the meantime it is harmless, so just eat the error*/
-						}
-					}
-					else
-#endif
-					{
-						using (var mf = new MainForm(args))
-						{
-							var title = mf.Text;
-							mf.Show();
-							mf.Text = title;
-
-							if (System.Diagnostics.Debugger.IsAttached)
-							{
-								GlobalWin.ExitCode = mf.ProgramRunLoop();
-							}
-							else
-							{
-								try
-								{
-									GlobalWin.ExitCode = mf.ProgramRunLoop();
-								}
-								catch (Exception e)
-								{
-#if WINDOWS
-									if (!VersionInfo.DeveloperBuild && Global.MovieSession.Movie.IsActive)
-									{
-										var result = MessageBox.Show(
-											"EmuHawk has thrown a fatal exception and is about to close.\nA movie has been detected. Would you like to try to save?\n(Note: Depending on what caused this error, this may or may not succeed)",
-											"Fatal error: " + e.GetType().Name,
-											MessageBoxButtons.YesNo,
-											MessageBoxIcon.Exclamation
-											);
-										if (result == DialogResult.Yes)
-										{
-											Global.MovieSession.Movie.Save();
-										}
-									}
-#endif
-									throw;
-								}
-							}
-						}
-					}
+					GlobalWin.Sound.Dispose();
+					GlobalWin.Sound = null;
 				}
-				catch (Exception e)
-				{
-					new ExceptionBox(e).ShowDialog();
-				}
-#if WINDOWS
-				finally
-				{
-					if (GlobalWin.Sound != null)
-					{
-						GlobalWin.Sound.Dispose();
-						GlobalWin.Sound = null;
-					}
-					GlobalWin.GL.Dispose();
-					GamePad.CloseAll();
-				}
-#endif
+				GlobalWin.GL.Dispose();
+				Input.Cleanup();
 			}
 
 			//cleanup:
@@ -320,6 +271,14 @@ namespace BizHawk.Client.EmuHawk
 		[DllImport("kernel32.dll", SetLastError = true)]
 		static extern uint SetDllDirectory(string lpPathName);
 
+		[DllImport("kernel32.dll", EntryPoint = "DeleteFileW", SetLastError = true, CharSet = CharSet.Unicode, ExactSpelling = true)]
+		static extern bool DeleteFileW([MarshalAs(UnmanagedType.LPWStr)]string lpFileName);
+
+		public static void RemoveMOTW(string path)
+		{
+			DeleteFileW(path + ":Zone.Identifier");
+		}
+
 		static void WhackAllMOTW(string dllDir)
 		{
 			var todo = new Queue<DirectoryInfo>(new[] { new DirectoryInfo(dllDir) });
@@ -328,9 +287,9 @@ namespace BizHawk.Client.EmuHawk
 				var di = todo.Dequeue();
 				foreach (var disub in di.GetDirectories()) todo.Enqueue(disub);
 				foreach (var fi in di.GetFiles("*.dll"))
-					Win32Hacks.RemoveMOTW(fi.FullName);
+					RemoveMOTW(fi.FullName);
 				foreach (var fi in di.GetFiles("*.exe"))
-					Win32Hacks.RemoveMOTW(fi.FullName);
+					RemoveMOTW(fi.FullName);
 			}
 
 		}
@@ -339,18 +298,51 @@ namespace BizHawk.Client.EmuHawk
 
 		static Assembly CurrentDomain_AssemblyResolve(object sender, ResolveEventArgs args)
 		{
+			string requested = args.Name;
+
+			//mutate filename depending on selection of lua core. here's how it works
+			//1. we build NLua to the output/dll/lua directory. that brings KopiLua with it
+			//2. We reference it from there, but we tell it not to copy local; that way there's no NLua in the output/dll directory
+			//3. When NLua assembly attempts to load, it can't find it
+			//I. if LuaInterface is selected by the user, we switch to requesting that.
+			//     (those DLLs are built into the output/DLL directory)
+			//II. if NLua is selected by the user, we skip over this part; 
+			//    later, we look for NLua or KopiLua assembly names and redirect them to files located in the output/DLL/nlua directory
+			if (new AssemblyName(requested).Name == "NLua")
+			{
+				//this method referencing Global.Config makes assemblies get loaded, which isnt smart from the assembly resolver.
+				//so.. we're going to resort to something really bad.
+				//avert your eyes.
+				bool UseNLua = true;
+				string configPath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "config.ini");
+				if (File.Exists(configPath))
+				{
+					var cfg = File.ReadAllLines(configPath);
+					var usenlua_key = cfg.FirstOrDefault(line=>line.Contains("  \"UseNLua\": "));
+					if (usenlua_key != null)
+						if (usenlua_key.Contains("false"))
+							UseNLua = false;
+				}
+				
+				if (UseNLua) { }
+				else requested = "LuaInterface";
+			}
+
 			lock (AppDomain.CurrentDomain)
 			{
 				var asms = AppDomain.CurrentDomain.GetAssemblies();
 				foreach (var asm in asms)
-					if (asm.FullName == args.Name)
+					if (asm.FullName == requested)
 						return asm;
 
 				//load missing assemblies by trying to find them in the dll directory
-				string dllname = new AssemblyName(args.Name).Name + ".dll";
+				string dllname = new AssemblyName(requested).Name + ".dll";
 				string directory = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "dll");
+				string simpleName = new AssemblyName(requested).Name;
+				if (simpleName == "NLua" || simpleName == "KopiLua") directory = Path.Combine(directory, "nlua");
 				string fname = Path.Combine(directory, dllname);
 				if (!File.Exists(fname)) return null;
+
 				//it is important that we use LoadFile here and not load from a byte array; otherwise mixed (managed/unamanged) assemblies can't load
 				return Assembly.LoadFile(fname);
 			}

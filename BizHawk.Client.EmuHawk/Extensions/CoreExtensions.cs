@@ -3,7 +3,6 @@
 using BizHawk.Emulation.Common;
 using BizHawk.Emulation.Common.IEmulatorExtensions;
 
-using BizHawk.Emulation.Cores.Atari.Atari7800;
 using BizHawk.Emulation.Cores.Nintendo.GBA;
 using BizHawk.Emulation.Cores.Consoles.Nintendo.QuickNES;
 using BizHawk.Emulation.Cores.Nintendo.SNES;
@@ -36,18 +35,6 @@ namespace BizHawk.Client.EmuHawk.CoreExtensions
 			{
 				return Properties.Resources.bsnes;
 			}
-			else if (core is Yabause)
-			{
-				return Properties.Resources.yabause;
-			}
-			else if (core is Atari7800)
-			{
-				return Properties.Resources.emu7800;
-			}
-			else if (core is GBA)
-			{
-				return Properties.Resources.meteor;
-			}
 			else if (core is GPGX)
 			{
 				return Properties.Resources.genplus;
@@ -74,13 +61,8 @@ namespace BizHawk.Client.EmuHawk.CoreExtensions
 		{
 			var attributes = core.Attributes();
 
-			var str = (!attributes.Released ? "(Experimental) " : string.Empty) +
+			var str = (!attributes.Released ? "(Experimental) " : "") +
 				attributes.CoreName;
-
-			if (core is LibsnesCore)
-			{
-				str += " (" + ((LibsnesCore)core).CurrentProfile + ")";
-			}
 
 			return str;
 		}

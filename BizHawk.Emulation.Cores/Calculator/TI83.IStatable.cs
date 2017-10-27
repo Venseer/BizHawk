@@ -7,58 +7,52 @@ namespace BizHawk.Emulation.Cores.Calculators
 {
 	public partial class TI83 : IStatable
 	{
-		private byte[] _stateBuffer;
-
 		public bool BinarySaveStatesPreferred
 		{
-			get { return false; }
+			get { return true; }
+		}
+
+		public void SaveStateText(TextWriter writer)
+		{
+			SyncState(new Serializer(writer));
+		}
+
+		public void LoadStateText(TextReader reader)
+		{
+			SyncState(new Serializer(reader));
 		}
 
 		public void SaveStateBinary(BinaryWriter bw)
 		{
-			SyncState(Serializer.CreateBinaryWriter(bw));
+			SyncState(new Serializer(bw));
 		}
 
 		public void LoadStateBinary(BinaryReader br)
 		{
-			SyncState(Serializer.CreateBinaryReader(br));
-		}
-
-		public void SaveStateText(TextWriter tw)
-		{
-			SyncState(Serializer.CreateTextWriter(tw));
-		}
-
-		public void LoadStateText(TextReader tr)
-		{
-			SyncState(Serializer.CreateTextReader(tr));
+			SyncState(new Serializer(br));
 		}
 
 		public byte[] SaveStateBinary()
 		{
-			if (_stateBuffer == null)
-			{
-				var stream = new MemoryStream();
-				var writer = new BinaryWriter(stream);
-				SaveStateBinary(writer);
-				_stateBuffer = stream.ToArray();
-				writer.Close();
-				return _stateBuffer;
-			}
-			else
-			{
-				var stream = new MemoryStream(_stateBuffer);
-				var writer = new BinaryWriter(stream);
-				SaveStateBinary(writer);
-				writer.Close();
-				return _stateBuffer;
-			}
+			MemoryStream ms = new MemoryStream();
+			BinaryWriter bw = new BinaryWriter(ms);
+			SaveStateBinary(bw);
+			bw.Flush();
+			return ms.ToArray();
 		}
 
 		private void SyncState(Serializer ser)
 		{
+			byte[] core = null;
+			if (ser.IsWriter)
+			{
+				var ms = new MemoryStream();
+				ms.Close();
+				core = ms.ToArray();
+			}
+			_cpu.SyncState(ser);
+
 			ser.BeginSection("TI83");
-			Cpu.SyncState(ser);
 			ser.Sync("RAM", ref _ram, false);
 			ser.Sync("romPageLow3Bits", ref _romPageLow3Bits);
 			ser.Sync("romPageHighBit", ref _romPageHighBit);
@@ -70,11 +64,20 @@ namespace BizHawk.Emulation.Cores.Calculators
 			ser.Sync("maskOn", ref _maskOn);
 			ser.Sync("onPressed", ref _onPressed);
 			ser.Sync("keyboardMask", ref _keyboardMask);
-			ser.Sync("m_LinkOutput", ref LinkOutput);
+			ser.Sync("m_LinkOutput", ref _linkOutput);
 			ser.Sync("VRAM", ref _vram, false);
 			ser.Sync("Frame", ref _frame);
 			ser.Sync("LagCount", ref _lagCount);
 			ser.Sync("IsLag", ref _isLag);
+			ser.Sync("ON_key_int", ref ON_key_int);
+			ser.Sync("ON_key_int_EN", ref ON_key_int_EN);
+			ser.Sync("TIM_1_int", ref TIM_1_int);
+			ser.Sync("TIM_1_int_EN", ref TIM_1_int_EN);
+			ser.Sync("TIM_frq", ref TIM_frq);
+			ser.Sync("TIM_mult", ref TIM_mult);
+			ser.Sync("TIM_count", ref TIM_count);
+			ser.Sync("TIM_hit", ref TIM_hit);
+
 			ser.EndSection();
 
 			if (ser.IsReader)

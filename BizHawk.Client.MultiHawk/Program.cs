@@ -86,24 +86,18 @@ namespace BizHawk.Client.MultiHawk
 						{
 							mf.ProgramRunLoop();
 						}
-						catch (Exception e)
+						catch (Exception e) when (Global.MovieSession.Movie.IsActive)
 						{
-#if WINDOWS
-							if (Global.MovieSession.Movie.IsActive)
+							var result = MessageBox.Show(
+								"EmuHawk has thrown a fatal exception and is about to close.\nA movie has been detected. Would you like to try to save?\n(Note: Depending on what caused this error, this may or may not succeed)",
+								"Fatal error: " + e.GetType().Name,
+								MessageBoxButtons.YesNo,
+								MessageBoxIcon.Exclamation
+								);
+							if (result == DialogResult.Yes)
 							{
-								var result = MessageBox.Show(
-									"EmuHawk has thrown a fatal exception and is about to close.\nA movie has been detected. Would you like to try to save?\n(Note: Depending on what caused this error, this may or may not succeed)",
-									"Fatal error: " + e.GetType().Name,
-									MessageBoxButtons.YesNo,
-									MessageBoxIcon.Exclamation
-									);
-								if (result == DialogResult.Yes)
-								{
-									Global.MovieSession.Movie.Save();
-								}
+								Global.MovieSession.Movie.Save();
 							}
-#endif
-							throw;
 						}
 					}
 			}
@@ -166,9 +160,9 @@ namespace BizHawk.Client.MultiHawk
 				var di = todo.Dequeue();
 				foreach (var disub in di.GetDirectories()) todo.Enqueue(disub);
 				foreach (var fi in di.GetFiles("*.dll"))
-					Win32Hacks.RemoveMOTW(fi.FullName);
+					RemoveMOTW(fi.FullName);
 				foreach (var fi in di.GetFiles("*.exe"))
-					Win32Hacks.RemoveMOTW(fi.FullName);
+					RemoveMOTW(fi.FullName);
 			}
 
 		}

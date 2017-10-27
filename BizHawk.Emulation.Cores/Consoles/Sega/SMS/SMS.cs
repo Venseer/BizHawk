@@ -4,63 +4,28 @@ using BizHawk.Common.StringExtensions;
 using BizHawk.Emulation.Common;
 using BizHawk.Emulation.Common.Components;
 using BizHawk.Emulation.Cores.Components;
-using BizHawk.Emulation.Cores.Components.Z80;
+using BizHawk.Emulation.Cores.Components.Z80A;
 
 /*****************************************************
   TODO: 
-  + HCounter
+  + HCounter (Manually set for light phaser emulation... should be only case it's polled)
   + Try to clean up the organization of the source code. 
-  + Lightgun/Paddle/etc if I get really bored  
+  + Lightgun/Paddle/etc if I get really bored  (first 2 done!)
   + Mode 1 not implemented in VDP TMS modes. (I dont have a test case in SG1000 or Coleco)
  
 **********************************************************/
 
 namespace BizHawk.Emulation.Cores.Sega.MasterSystem
 {
-	[CoreAttributes(
+	[Core(
 		"SMSHawk",
 		"Vecna",
 		isPorted: false,
-		isReleased: true
-		)]
+		isReleased: true)]
 	[ServiceNotApplicable(typeof(IDriveLight))]
 	public sealed partial class SMS : IEmulator, ISaveRam, IStatable, IInputPollable, IRegionable,
 		IDebuggable, ISettable<SMS.SMSSettings, SMS.SMSSyncSettings>, ICodeDataLogger
 	{
-		// Constants
-		private const int BankSize = 16384;
-
-		// ROM
-		private byte[] RomData;
-		private byte RomBank0, RomBank1, RomBank2, RomBank3;
-		private byte RomBanks;
-		private byte[] BiosRom;
-
-		// Machine resources
-		private Z80A Cpu;
-		private byte[] SystemRam;
-		public VDP Vdp;
-		private SN76489 PSG;
-		private YM2413 YM2413;
-		public bool IsGameGear { get; set; }
-		public bool IsSG1000 { get; set; }
-
-		private bool HasYM2413 = false;
-
-		private int frame = 0;
-		
-		public int Frame { get { return frame; } set { frame = value; } }
-
-		private byte Port01 = 0xFF;
-		private byte Port02 = 0xFF;
-		private byte Port3E = 0xAF;
-		private byte Port3F = 0xFF;
-
-		private byte ForceStereoByte = 0xAD;
-		private bool IsGame3D = false;
-
-		public DisplayType Region { get; set; }
-
 		[CoreConstructor("SMS", "SG", "GG")]
 		public SMS(CoreComm comm, GameInfo game, byte[] rom, object settings, object syncSettings)
 		{
@@ -75,7 +40,10 @@ namespace BizHawk.Emulation.Cores.Sega.MasterSystem
 			RomData = rom;
 
 			if (RomData.Length % BankSize != 0)
+			{
 				Array.Resize(ref RomData, ((RomData.Length / BankSize) + 1) * BankSize);
+			}
+
 			RomBanks = (byte)(RomData.Length / BankSize);
 
 			Region = DetermineDisplayType(SyncSettings.DisplayType, game.Region);
@@ -84,13 +52,17 @@ namespace BizHawk.Emulation.Cores.Sega.MasterSystem
 				Region = DisplayType.PAL;
 				CoreComm.Notify("Display was forced to PAL mode for game compatibility.");
 			}
-			if (IsGameGear) 
+
+			if (IsGameGear)
+			{
 				Region = DisplayType.NTSC; // all game gears run at 60hz/NTSC mode
-			CoreComm.VsyncNum = Region == DisplayType.NTSC ? 60 : 50;
-			CoreComm.VsyncDen = 1;
+			}
 
 			RegionStr = SyncSettings.ConsoleRegion;
-			if (RegionStr == "Auto") RegionStr = DetermineRegion(game.Region);
+			if (RegionStr == "Auto")
+			{
+				RegionStr = DetermineRegion(game.Region);
+			}
 
 			if (game["Japan"] && RegionStr != "Japan")
 			{
@@ -99,18 +71,19 @@ namespace BizHawk.Emulation.Cores.Sega.MasterSystem
 			}
 
 			if ((game.NotInDatabase || game["FM"]) && SyncSettings.EnableFM && !IsGameGear)
-				HasYM2413 = true;
-
-			if (Controller == null)
 			{
-				Controller = NullController.Instance;
+				HasYM2413 = true;
 			}
 
-			Cpu = new Z80A();
-			Cpu.RegisterSP = 0xDFF0;
-			Cpu.ReadHardware = ReadPort;
-			Cpu.WriteHardware = WritePort;
-			Cpu.MemoryCallbacks = MemoryCallbacks;
+			Cpu = new Z80A()
+			{
+				ReadHardware = ReadPort,
+				WriteHardware = WritePort,
+				FetchMemory = ReadMemory,
+				ReadMemory = ReadMemory,
+				WriteMemory = WriteMemory,
+				MemoryCallbacks = MemoryCallbacks
+			};
 
 			Vdp = new VDP(this, Cpu, IsGameGear ? VdpMode.GameGear : VdpMode.SMS, Region);
 			(ServiceProvider as BasicServiceProvider).Register<IVideoProvider>(Vdp);
@@ -118,7 +91,10 @@ namespace BizHawk.Emulation.Cores.Sega.MasterSystem
 			YM2413 = new YM2413();
 			SoundMixer = new SoundMixer(YM2413, PSG);
 			if (HasYM2413 && game["WhenFMDisablePSG"])
+			{
 				SoundMixer.DisableSource(PSG);
+			}
+
 			ActiveSoundProvider = HasYM2413 ? (IAsyncSoundProvider)SoundMixer : PSG;
 			_fakeSyncSound = new FakeSyncSound(ActiveSoundProvider, 735);
 			(ServiceProvider as BasicServiceProvider).Register<ISoundProvider>(_fakeSyncSound);
@@ -139,6 +115,8 @@ namespace BizHawk.Emulation.Cores.Sega.MasterSystem
 				InitNemesisMapper();
 			else if (game["TerebiOekaki"])
 				InitTerebiOekaki();
+			else if (game["EEPROM"])
+				InitEEPROMMapper();
 			else
 				InitSegaMapper();
 
@@ -148,6 +126,7 @@ namespace BizHawk.Emulation.Cores.Sega.MasterSystem
 				{
 					ForceStereoByte = byte.Parse(game.OptionValue("StereoByte"));
 				}
+
 				PSG.StereoPanning = ForceStereoByte;
 			}
 
@@ -168,17 +147,27 @@ namespace BizHawk.Emulation.Cores.Sega.MasterSystem
 			else if (game.System == "SMS")
 			{
 				BiosRom = comm.CoreFileProvider.GetFirmware("SMS", RegionStr, false);
-				if (BiosRom != null && (game["RequireBios"] || SyncSettings.UseBIOS))
-					Port3E = 0xF7;
 
-				if (BiosRom == null && game["RequireBios"])
-					throw new MissingFirmwareException("BIOS image not available. This game requires BIOS to function.");
-				if (SyncSettings.UseBIOS && BiosRom == null)
-					CoreComm.Notify("BIOS was selected, but rom image not available. BIOS not enabled.");
+				if (BiosRom == null)
+				{
+					throw new MissingFirmwareException("No BIOS found");
+				}				
+				else if (!game["RequireBios"] && !SyncSettings.UseBIOS)
+				{
+					// we are skipping the BIOS
+					// but only if it won't break the game
+				}
+				else
+				{
+					Port3E = 0xF7;
+				}
 			}
 
 			if (game["SRAM"])
+			{
 				SaveRAM = new byte[int.Parse(game.OptionValue("SRAM"))];
+				Console.WriteLine(SaveRAM.Length);
+			}			
 			else if (game.NotInDatabase)
 				SaveRAM = new byte[0x8000];
 
@@ -193,9 +182,46 @@ namespace BizHawk.Emulation.Cores.Sega.MasterSystem
 
 			var serviceProvider = ServiceProvider as BasicServiceProvider;
 			serviceProvider.Register<ITraceable>(Tracer);
-			serviceProvider.Register<IDisassemblable>(new Disassembler());
+			serviceProvider.Register<IDisassemblable>(Cpu);
 			Vdp.ProcessOverscan();
+
+			Cpu.ReadMemory = ReadMemory;
+			Cpu.WriteMemory = WriteMemory;
 		}
+
+		// Constants
+		private const int BankSize = 16384;
+
+		// ROM
+		private byte[] RomData;
+		private byte RomBank0, RomBank1, RomBank2, RomBank3;
+		private byte RomBanks;
+		private byte[] BiosRom;
+
+		// Machine resources
+		private Z80A Cpu;
+		private byte[] SystemRam;
+		public VDP Vdp;
+		private SN76489 PSG;
+		private YM2413 YM2413;
+		public bool IsGameGear { get; set; }
+		public bool IsSG1000 { get; set; }
+
+		private bool HasYM2413 = false;
+		private IController _controller;
+
+		private int _frame = 0;
+
+		private byte Port01 = 0xFF;
+		private byte Port02 = 0xFF;
+		private byte Port3E = 0xAF;
+		private byte Port3F = 0xFF;
+
+		private byte ForceStereoByte = 0xAD;
+		private bool IsGame3D = false;
+
+		public DisplayType Region { get; set; }
+
 
 		private ITraceable Tracer { get; set; }
 
@@ -237,7 +263,7 @@ namespace BizHawk.Emulation.Cores.Sega.MasterSystem
 		/// <summary>
 		/// A dummy FetchMemory that simply reads the memory
 		/// </summary>
-		private byte FetchMemory_StubThunk(ushort address, bool first)
+		private byte FetchMemory_StubThunk(ushort address)
 		{
 			return ReadMemory(address);
 		}
@@ -265,7 +291,7 @@ namespace BizHawk.Emulation.Cores.Sega.MasterSystem
 				if ((port & 1) == 0)
 					return Vdp.ReadVLineCounter();
 				else
-					return 0x50; // TODO Vdp.ReadHLineCounter();
+					return Vdp.ReadHLineCounter();
 			}
 			if (port < 0xC0) // VDP data/control ports
 			{

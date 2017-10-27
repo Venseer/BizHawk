@@ -38,6 +38,7 @@ namespace BizHawk.Emulation.Cores.Sega.MasterSystem
 			public bool SpriteLimit = false;
 			public bool Fix3D = true;
 			public bool DisplayOverscan = false;
+			public string ControllerType = "Standard";
 
 			// GG settings
 			public bool ShowClippedRegions = false;
@@ -62,7 +63,7 @@ namespace BizHawk.Emulation.Cores.Sega.MasterSystem
 		{
 			public bool EnableFM = true;
 			public bool AllowOverlock = false;
-			public bool UseBIOS = false;
+			public bool UseBIOS = true;
 			public string ConsoleRegion = "Export";
 			public string DisplayType = "NTSC";
 

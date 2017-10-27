@@ -57,7 +57,7 @@ namespace BizHawk.Emulation.Cores.Nintendo.Gameboy
 		/// <param name="flags">ORed combination of LoadFlags.</param>
 		/// <returns>0 on success, negative value on failure.</returns>
 		[DllImport("libgambatte.dll", CallingConvention = CallingConvention.Cdecl)]
-		public static extern int gambatte_load(IntPtr core, byte[] romdata, uint length, long now, LoadFlags flags);
+		public static extern int gambatte_load(IntPtr core, byte[] romdata, uint length, byte[] biosdata, uint bioslength, long now, LoadFlags flags);
 
 		/// <summary>
 		/// Emulates until at least 'samples' stereo sound samples are produced in the supplied buffer,
@@ -264,6 +264,20 @@ namespace BizHawk.Emulation.Cores.Nintendo.Gameboy
 		/// <param name="callback">the callback</param>
 		[DllImport("libgambatte.dll", CallingConvention = CallingConvention.Cdecl)]
 		public static extern void gambatte_setrtccallback(IntPtr core, RTCCallback callback);
+		
+		/// <summary>
+		/// type of the link data sent callback
+		/// </summary>
+		[UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+		public delegate void LinkCallback();
+
+		/// <summary>
+		/// sets the Link data sent callback.
+		/// </summary>
+		/// <param name="core">opaque state pointer</param>
+		/// <param name="callback">the callback</param>
+		[DllImport("libgambatte.dll", CallingConvention = CallingConvention.Cdecl)]
+		public static extern void gambatte_setlinkcallback(IntPtr core, LinkCallback callback);
 
 		/// <summary>
 		/// Returns true if the currently loaded ROM image is treated as having CGB support.
