@@ -61,19 +61,21 @@ namespace BizHawk.Emulation.Cores.Sega.MasterSystem
 			ser.Sync("RomBank1", ref RomBank1);
 			ser.Sync("RomBank2", ref RomBank2);
 			ser.Sync("RomBank3", ref RomBank3);
+			ser.Sync("Bios_bank", ref Bios_bank);
 			ser.Sync("Port01", ref Port01);
 			ser.Sync("Port02", ref Port02);
 			ser.Sync("Port3E", ref Port3E);
 			ser.Sync("Port3F", ref Port3F);
-			ser.Sync("Paddle1High", ref Paddle1High);
-			ser.Sync("Paddle2High", ref Paddle2High);
+			ser.Sync("Controller1SelectHigh", ref Controller1SelectHigh);
+			ser.Sync("ControllerSelect2High", ref Controller2SelectHigh);
 			ser.Sync("LatchLightPhaser", ref LatchLightPhaser);
 
 			if (SaveRAM != null)
 			{
 				ser.Sync("SaveRAM", ref SaveRAM, false);
-				ser.Sync("SaveRamBank", ref SaveRamBank);
 			}
+
+			ser.Sync("SaveRamBank", ref SaveRamBank);
 
 			if (ExtRam != null)
 			{

@@ -742,7 +742,7 @@ namespace BizHawk.Client.EmuHawk
 			{
 				CurrentTasMovie.Markers.Remove(m);
 			}
-
+			MarkerControl.ShrinkSelection();
 			RefreshDialog();
 		}
 
@@ -1014,6 +1014,7 @@ namespace BizHawk.Client.EmuHawk
 				Location = this.ChildPointToScreen(TasView),
 				Statable = this.StatableEmulator
 			}.ShowDialog();
+			CurrentTasMovie.TasStateManager.UpdateStateFrequency();
 			CurrentTasMovie.TasStateManager.LimitStateCount();
 			UpdateChangesIndicator();
 		}

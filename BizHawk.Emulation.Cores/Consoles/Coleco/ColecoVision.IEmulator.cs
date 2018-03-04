@@ -26,7 +26,6 @@ namespace BizHawk.Emulation.Cores.ColecoVision
 
 			_frame++;
 			_isLag = true;
-			PSG.BeginFrame(_cpu.TotalExecutedCycles);
 
 			if (_tracer.Enabled)
 			{
@@ -41,15 +40,56 @@ namespace BizHawk.Emulation.Cores.ColecoVision
 
 			bool intPending = (!tempRet1.Bit(4)) | (!tempRet2.Bit(4));
 
-			_vdp.ExecuteFrame(intPending);
+			for (int scanLine = 0; scanLine < 262; scanLine++)
+			{
+				_vdp.RenderScanline(scanLine);
 
-			PSG.EndFrame(_cpu.TotalExecutedCycles);
+				if (scanLine == 192)
+				{
+					_vdp.InterruptPending = true;
+
+					if (_vdp.EnableInterrupts)
+						_cpu.NonMaskableInterrupt = true;
+				}
+
+				for (int i = 0; i < 228; i++)
+				{
+					PSG.generate_sound(1);
+					if (use_SGM) { SGM_sound.generate_sound(1); }			
+					_cpu.ExecuteOne();
+
+					// pick out sound samples from the sound devies twice per scanline
+					if ((i==76) || (i==152))
+					{
+						PSG.Sample();
+						if (use_SGM) { SGM_sound.Sample(); }
+					}
+				}
+
+				_cpu.FlagI = false;
+				if (intPending && scanLine == 50)
+				{
+					if (_vdp.EnableInterrupts)
+					{
+						_cpu.FlagI = true;
+						intPending = false;
+					}
+				}
+			}
 
 			if (_isLag)
 			{
 				_lagCount++;
 			}
 		}
+
+		public bool use_SGM = false;
+		public bool is_MC = false;
+		public int MC_bank = 0;
+		public bool enable_SGM_high = false;
+		public bool enable_SGM_low = false;
+		public byte port_0x53, port_0x7F;
+
 
 		public int Frame => _frame;
 

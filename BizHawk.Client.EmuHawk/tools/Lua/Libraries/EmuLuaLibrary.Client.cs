@@ -150,6 +150,18 @@ namespace BizHawk.Client.EmuHawk
 			return GlobalWin.MainForm.EmulatorPaused;
 		}
 
+		[LuaMethod("isturbo", "Returns true if emulator is in turbo mode, otherwise, false")]
+		public static bool IsTurbo()
+		{
+			return GlobalWin.MainForm.IsTurboing;
+		}
+
+		[LuaMethod("isseeking", "Returns true if emulator is seeking, otherwise, false")]
+		public static bool IsSeeking()
+		{
+			return GlobalWin.MainForm.IsSeeking;
+		}
+
 		[LuaMethod("opencheats", "opens the Cheats dialog")]
 		public static void OpenCheats()
 		{
@@ -177,7 +189,8 @@ namespace BizHawk.Client.EmuHawk
 		[LuaMethod("openrom", "opens the Open ROM dialog")]
 		public static void OpenRom(string path)
 		{
-			GlobalWin.MainForm.LoadRom(path, new MainForm.LoadRomArgs { OpenAdvanced = new OpenAdvanced_OpenRom() });
+			var ioa = OpenAdvancedSerializer.ParseWithLegacy(path);
+			GlobalWin.MainForm.LoadRom(path, new MainForm.LoadRomArgs { OpenAdvanced = ioa });
 		}
 
 		[LuaMethod("opentasstudio", "opens the TAStudio dialog")]
