@@ -74,6 +74,8 @@ namespace BizHawk.Emulation.Cores.Components.Z80A
 		public const ushort SET_FL_IR = 59;
 		public const ushort I_BIT = 60;
 		public const ushort HL_BIT = 61;
+		public const ushort FTCH_DB = 62;
+		public const ushort WAIT = 63; // enterred when readin or writing and FlagW is true
 
 		public byte temp_R;
 
@@ -105,6 +107,11 @@ namespace BizHawk.Emulation.Cores.Components.Z80A
 		// Hardware I/O Port Access
 		public Func<ushort, byte> ReadHardware;
 		public Action<ushort, byte> WriteHardware;
+
+		// Data Bus
+		// Interrupting Devices are responsible for putting a value onto the data bus
+		// for as long as the interrupt is valid
+		public Func<byte> FetchDB;
 
 		//this only calls when the first byte of an instruction is fetched.
 		public Action<ushort> OnExecFetch;
@@ -140,7 +147,6 @@ namespace BizHawk.Emulation.Cores.Components.Z80A
 		// Execute instructions
 		public void ExecuteOne()
 		{
-			if (Regs[A] > 255) { Console.WriteLine(RegPC); }
 			switch (cur_instr[instr_pntr++])
 			{
 				case IDLE:
@@ -168,6 +174,7 @@ namespace BizHawk.Emulation.Cores.Components.Z80A
 						iff1 = false;
 						NMI_();
 						NMICallback();
+						instr_pntr = 0;
 					}
 					else if (iff1 && FlagI)
 					{
@@ -190,20 +197,28 @@ namespace BizHawk.Emulation.Cores.Components.Z80A
 								INTERRUPT_1();
 								break;
 							case 2:
-								// Low byte of interrupt vector comes from data bus
-								// We'll assume it's zero for now
-								INTERRUPT_2(0);
+								INTERRUPT_2();
 								break;
 						}
 						IRQCallback();
+						instr_pntr = 0;
 					}
 					else
 					{
-						if (OnExecFetch != null) OnExecFetch(RegPC);
-						if (TraceCallback != null) TraceCallback(State());
-						FetchInstruction(FetchMemory(RegPC++));
+						if(!FlagW)
+						{
+							if (OnExecFetch != null) OnExecFetch(RegPC);
+							if (TraceCallback != null) TraceCallback(State());
+							FetchInstruction(FetchMemory(RegPC++));
+							instr_pntr = 0;
+						}
+						else
+						{
+							instr_pntr--;
+							instr_swap = OP;
+							cur_instr[instr_pntr] = WAIT;
+						}						
 					}
-					instr_pntr = 0;
 
 					temp_R = (byte)(Regs[R] & 0x7F);
 					temp_R++;
@@ -246,6 +261,7 @@ namespace BizHawk.Emulation.Cores.Components.Z80A
 									DEC16, PCl, PCh,
 									OP };
 
+						instr_pntr = 0;
 						// adjust WZ register accordingly
 						switch (temp1)
 						{
@@ -293,6 +309,7 @@ namespace BizHawk.Emulation.Cores.Components.Z80A
 							iff1 = false;
 							NMI_();
 							NMICallback();
+							instr_pntr = 0;
 						}
 						else if (iff1 && FlagI)
 						{
@@ -315,18 +332,27 @@ namespace BizHawk.Emulation.Cores.Components.Z80A
 									INTERRUPT_1();
 									break;
 								case 2:
-									// Low byte of interrupt vector comes from data bus
-									// We'll assume it's zero for now
-									INTERRUPT_2(0);
+									INTERRUPT_2();
 									break;
 							}
 							IRQCallback();
+							instr_pntr = 0;
 						}
 						else
 						{
-							if (OnExecFetch != null) OnExecFetch(RegPC);
-							if (TraceCallback != null) TraceCallback(State());
-							FetchInstruction(FetchMemory(RegPC++));
+							if (!FlagW)
+							{
+								if (OnExecFetch != null) OnExecFetch(RegPC);
+								if (TraceCallback != null) TraceCallback(State());
+								FetchInstruction(FetchMemory(RegPC++));
+								instr_pntr = 0;
+							}
+							else
+							{
+								instr_pntr--;
+								instr_swap = OP;
+								cur_instr[instr_pntr] = WAIT;
+							}
 						}
 
 						temp_R = (byte)(Regs[R] & 0x7F);
@@ -334,11 +360,13 @@ namespace BizHawk.Emulation.Cores.Components.Z80A
 						temp_R &= 0x7F;
 						Regs[R] = (byte)((Regs[R] & 0x80) | temp_R);
 					}
-					instr_pntr = 0;
 					break;
 
 				case HALT:
 					halted = true;
+					// NOTE: Check how halt state effects the DB
+					Regs[DB] = 0xFF;
+
 					if (EI_pending > 0)
 					{
 						EI_pending--;
@@ -382,9 +410,7 @@ namespace BizHawk.Emulation.Cores.Components.Z80A
 								INTERRUPT_1();
 								break;
 							case 2:
-								// Low byte of interrupt vector comes from data bus
-								// We'll assume it's zero for now
-								INTERRUPT_2(0);
+								INTERRUPT_2();
 								break;
 						}
 						IRQCallback();
@@ -406,16 +432,53 @@ namespace BizHawk.Emulation.Cores.Components.Z80A
 					instr_pntr = 0;
 					break;
 				case RD:
-					Read_Func(cur_instr[instr_pntr++], cur_instr[instr_pntr++], cur_instr[instr_pntr++]);
+					if (!FlagW)
+					{
+						Read_Func(cur_instr[instr_pntr++], cur_instr[instr_pntr++], cur_instr[instr_pntr++]);
+					}
+					else
+					{
+						instr_pntr--;
+						instr_swap = RD;
+						cur_instr[instr_pntr] = WAIT;
+					}
+					
 					break;
 				case WR:
-					Write_Func(cur_instr[instr_pntr++], cur_instr[instr_pntr++], cur_instr[instr_pntr++]);
+					if (!FlagW)
+					{
+						Write_Func(cur_instr[instr_pntr++], cur_instr[instr_pntr++], cur_instr[instr_pntr++]);
+					}
+					else
+					{
+						instr_pntr--;
+						instr_swap = WR;
+						cur_instr[instr_pntr] = WAIT;
+					}
 					break;
 				case I_RD:
-					I_Read_Func(cur_instr[instr_pntr++], cur_instr[instr_pntr++], cur_instr[instr_pntr++], cur_instr[instr_pntr++]);
+					if (!FlagW)
+					{
+						I_Read_Func(cur_instr[instr_pntr++], cur_instr[instr_pntr++], cur_instr[instr_pntr++], cur_instr[instr_pntr++]);
+					}
+					else
+					{
+						instr_pntr--;
+						instr_swap = I_RD;
+						cur_instr[instr_pntr] = WAIT;
+					}
 					break;
 				case I_WR:
-					I_Write_Func(cur_instr[instr_pntr++], cur_instr[instr_pntr++], cur_instr[instr_pntr++], cur_instr[instr_pntr++]);
+					if (!FlagW)
+					{
+						I_Write_Func(cur_instr[instr_pntr++], cur_instr[instr_pntr++], cur_instr[instr_pntr++], cur_instr[instr_pntr++]);
+					}
+					else
+					{
+						instr_pntr--;
+						instr_swap =I_WR;
+						cur_instr[instr_pntr] = WAIT;
+					}
 					break;
 				case TR:
 					TR_Func(cur_instr[instr_pntr++], cur_instr[instr_pntr++]);
@@ -569,10 +632,28 @@ namespace BizHawk.Emulation.Cores.Components.Z80A
 					iff1 = iff2;
 					break;
 				case OUT:
-					OUT_Func(cur_instr[instr_pntr++], cur_instr[instr_pntr++]);
+					if (!FlagW)
+					{
+						OUT_Func(cur_instr[instr_pntr++], cur_instr[instr_pntr++], cur_instr[instr_pntr++]);
+					}
+					else
+					{
+						instr_pntr--;
+						instr_swap = OUT;
+						cur_instr[instr_pntr] = WAIT;
+					}
 					break;
 				case IN:
-					IN_Func(cur_instr[instr_pntr++], cur_instr[instr_pntr++]);
+					if (!FlagW)
+					{
+						IN_Func(cur_instr[instr_pntr++], cur_instr[instr_pntr++], cur_instr[instr_pntr++]);
+					}
+					else
+					{
+						instr_pntr--;
+						instr_swap = IN;
+						cur_instr[instr_pntr] = WAIT;
+					}
 					break;
 				case NEG:
 					NEG_8_Func(cur_instr[instr_pntr++]);
@@ -595,8 +676,47 @@ namespace BizHawk.Emulation.Cores.Components.Z80A
 				case SET_FL_IR:
 					SET_FL_IR_Func(cur_instr[instr_pntr++]);
 					break;
+				case FTCH_DB:
+					FTCH_DB_Func();
+					break;
+				case WAIT:
+					if (FlagW)
+					{
+						instr_pntr--;
+					}
+					else
+					{
+						switch (instr_swap)
+						{
+							case OP:
+								if (OnExecFetch != null) OnExecFetch(RegPC);
+								if (TraceCallback != null) TraceCallback(State());
+								FetchInstruction(FetchMemory(RegPC++));
+								instr_pntr = 0;
+								break;
+							case RD:
+								Read_Func(cur_instr[instr_pntr++], cur_instr[instr_pntr++], cur_instr[instr_pntr++]);
+								break;
+							case WR:
+								Write_Func(cur_instr[instr_pntr++], cur_instr[instr_pntr++], cur_instr[instr_pntr++]);
+								break;
+							case I_RD:
+								I_Read_Func(cur_instr[instr_pntr++], cur_instr[instr_pntr++], cur_instr[instr_pntr++], cur_instr[instr_pntr++]);
+								break;
+							case I_WR:
+								I_Read_Func(cur_instr[instr_pntr++], cur_instr[instr_pntr++], cur_instr[instr_pntr++], cur_instr[instr_pntr++]);
+								break;
+							case IN:
+								IN_Func(cur_instr[instr_pntr++], cur_instr[instr_pntr++], cur_instr[instr_pntr++]);
+								break;
+							case OUT:
+								OUT_Func(cur_instr[instr_pntr++], cur_instr[instr_pntr++], cur_instr[instr_pntr++]);
+								break;
+						}
+					}
+					break;
 			}
-			totalExecutedCycles++;
+			TotalExecutedCycles++;
 		}
 
 		// tracer stuff
@@ -651,8 +771,8 @@ namespace BizHawk.Emulation.Cores.Components.Z80A
 					FlagI ? "E" : "e")
 			};
 		}
-		// State Save/Load
 
+		// State Save/Load
 		public void SyncState(Serializer ser)
 		{
 			ser.BeginSection("Z80A");
@@ -663,13 +783,15 @@ namespace BizHawk.Emulation.Cores.Components.Z80A
 			ser.Sync("IFF1", ref iff1);
 			ser.Sync("IFF2", ref iff2);
 			ser.Sync("Halted", ref halted);
-			ser.Sync("ExecutedCycles", ref totalExecutedCycles);
+			ser.Sync("ExecutedCycles", ref TotalExecutedCycles);
 			ser.Sync("EI_pending", ref EI_pending);
 
-			ser.Sync("instruction_pointer", ref instr_pntr);
-			ser.Sync("current instruction", ref cur_instr, false);		
+			ser.Sync("instr_pntr", ref instr_pntr);
+			ser.Sync("cur_instr", ref cur_instr, false);
+			ser.Sync("instr_swap", ref instr_swap);
 			ser.Sync("opcode", ref opcode);
 			ser.Sync("FlagI", ref FlagI);
+			ser.Sync("FlagW", ref FlagW);
 
 			ser.Sync("NO Preifx", ref NO_prefix);
 			ser.Sync("CB Preifx", ref CB_prefix);

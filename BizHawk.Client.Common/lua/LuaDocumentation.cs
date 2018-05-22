@@ -59,7 +59,7 @@ __Types and notation__
 					sb
 						.AppendFormat("__{0}.{1}__%%%", func.Library, func.Name)
 						.AppendLine().AppendLine()
-						.AppendFormat("* {0} {1}.{2}{3}", func.ReturnType, func.Library, func.Name, func.ParameterList)
+						.AppendFormat("* {0} {1}.{2}{3}", func.ReturnType, func.Library, func.Name, func.ParameterList.Replace("[", "[[").Replace("]", "]]"))
 						.AppendLine().AppendLine()
 						.AppendFormat("* {0}", func.Description)
 						.AppendLine().AppendLine();
@@ -162,12 +162,13 @@ __Types and notation__
 	public class LibraryFunction
 	{
 		private readonly LuaMethodAttribute _luaAttributes;
+		private readonly LuaMethodExampleAttribute _luaExampleAttribute;
 		private readonly MethodInfo _method;
 
 		public LibraryFunction(string library, string libraryDescription, MethodInfo method)
 		{
-			_luaAttributes = method.GetCustomAttributes(typeof(LuaMethodAttribute), false)
-				.First() as LuaMethodAttribute;
+			_luaAttributes = method.GetCustomAttribute<LuaMethodAttribute>(false);
+			_luaExampleAttribute = method.GetCustomAttribute<LuaMethodExampleAttribute>(false);
 			_method = method;
 
 			Library = library;
@@ -182,6 +183,8 @@ __Types and notation__
 		public string Name => _luaAttributes.Name;
 
 		public string Description => _luaAttributes.Description;
+
+		public string Example => _luaExampleAttribute?.Example;
 
 		private string _paramterList = null;
 

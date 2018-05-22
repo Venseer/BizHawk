@@ -35,6 +35,7 @@ namespace BizHawk.Emulation.Cores.ColecoVision
 
 			PSG = new SN76489col();
 			SGM_sound = new AY_3_8910_SGM();
+			_blip.SetRates(3579545, 44100);
 
 			ControllerDeck = new ColecoVisionControllerDeck(_syncSettings.Port1, _syncSettings.Port2);
 
@@ -71,8 +72,10 @@ namespace BizHawk.Emulation.Cores.ColecoVision
 		public byte[] SGM_high_RAM = new byte[0x6000];
 		public byte[] SGM_low_RAM = new byte[0x2000];
 
+		public bool temp_1_prev, temp_2_prev;
+
 		private int _frame;
-		private IController _controller;
+		private IController _controller = NullController.Instance;
 
 		private enum InputPortMode
 		{
@@ -245,13 +248,13 @@ namespace BizHawk.Emulation.Cores.ColecoVision
 			byte retval;
 			if (_inputPortSelection == InputPortMode.Left)
 			{
-				retval = ControllerDeck.ReadPort1(_controller, true, false);
+				retval = ControllerDeck.ReadPort1(_controller, true, true);
 				return retval;
 			}
 
 			if (_inputPortSelection == InputPortMode.Right)
 			{
-				retval = ControllerDeck.ReadPort1(_controller, false, false);
+				retval = ControllerDeck.ReadPort1(_controller, false, true);
 				return retval;
 			}
 
@@ -264,13 +267,13 @@ namespace BizHawk.Emulation.Cores.ColecoVision
 			byte retval;
 			if (_inputPortSelection == InputPortMode.Left)
 			{
-				retval = ControllerDeck.ReadPort2(_controller, true, false);
+				retval = ControllerDeck.ReadPort2(_controller, true, true);
 				return retval;
 			}
 
 			if (_inputPortSelection == InputPortMode.Right)
 			{
-				retval = ControllerDeck.ReadPort2(_controller, false, false);
+				retval = ControllerDeck.ReadPort2(_controller, false, true);
 				return retval;
 			}
 

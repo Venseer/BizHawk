@@ -143,6 +143,12 @@ namespace BizHawk.Client.Common
 			{
 				_myBoolButtons[button] = Global.AutofireStickyXORAdapter.IsSticky(button);
 			}
+
+			// float controls don't have sticky logic. but old values remain in MovieOutputHardpoint if we don't update this here
+			foreach (var name in Definition.FloatControls)
+			{
+				_myFloatControls[name] = Global.AutofireStickyXORAdapter.GetFloat(name);
+			}
 		}
 
 		/// <summary>
@@ -166,11 +172,12 @@ namespace BizHawk.Client.Common
 					}
 					else if (def.FloatControls.Contains(key))
 					{
-						var temp = trimmed.Substring(iterator, 5);
+						var commaIndex = trimmed.Substring(iterator).IndexOf(',');
+						var temp = trimmed.Substring(iterator, commaIndex);
 						var val = int.Parse(temp.Trim());
 						_myFloatControls[key] = val;
 
-						iterator += 6;
+						iterator += commaIndex + 1;
 					}
 				}
 			}

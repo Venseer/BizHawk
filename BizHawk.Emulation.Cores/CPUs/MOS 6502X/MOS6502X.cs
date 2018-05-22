@@ -6,10 +6,13 @@ using BizHawk.Emulation.Common;
 
 namespace BizHawk.Emulation.Cores.Components.M6502
 {
-	public sealed partial class MOS6502X
+	public sealed partial class MOS6502X<TLink> where TLink : IMOS6502XLink
 	{
-		public MOS6502X()
+		private readonly TLink _link;
+
+		public MOS6502X(TLink link)
 		{
+			_link = link;
 			InitOpcodeHandlers();
 			Reset();
 		}
@@ -48,23 +51,31 @@ namespace BizHawk.Emulation.Cores.Components.M6502
 
 		public TraceInfo State(bool disassemble = true)
 		{
-			int notused;
+			if (!disassemble)
+			{
+				return new TraceInfo {
+					Disassembly = "",
+					RegisterInfo = ""
+				};
+			}
+
+			int length;
+			string rawbytes = "";
+			string disasm = Disassemble(PC, out length);
+
+			for (int i = 0; i < length; i++)
+			{
+				rawbytes += string.Format(" {0:X2}", _link.PeekMemory((ushort)(PC + i)));
+			}
 
 			return new TraceInfo
 			{
 				Disassembly = string.Format(
-					"{0:X4}:  {1:X2}  {2} ",
-					PC,
-					PeekMemory(PC),
-					disassemble ? Disassemble(PC, out notused) : "---").PadRight(26),
+					"{0:X4}: {1,-9}  {2} ",
+					PC, rawbytes, disasm).PadRight(32),
 				RegisterInfo = string.Format(
-					"A:{0:X2} X:{1:X2} Y:{2:X2} P:{3:X2} SP:{4:X2} Cy:{5} {6}{7}{8}{9}{10}{11}{12}{13}",
-					A,
-					X,
-					Y,
-					P,
-					S,
-					TotalExecutedCycles,
+					"A:{0:X2} X:{1:X2} Y:{2:X2} SP:{4:X2} P:{3:X2} {6}{7}{8}{9}{10}{11}{12}{13} Cy:{5}",
+					A, X, Y, P, S, TotalExecutedCycles,
 					FlagN ? "N" : "n",
 					FlagV ? "V" : "v",
 					FlagT ? "T" : "t",
@@ -196,41 +207,19 @@ namespace BizHawk.Emulation.Cores.Components.M6502
 			private set { P = (byte)((P & ~0x80) | (value ? 0x80 : 0x00)); }
 		}
 
-		public int TotalExecutedCycles;
-
-		public Func<ushort, byte> ReadMemory;
-		public Func<ushort, byte> DummyReadMemory;
-		public Func<ushort, byte> PeekMemory;
-		public Action<ushort, byte> WriteMemory;
-
-		//this only calls when the first byte of an instruction is fetched.
-		public Action<ushort> OnExecFetch;
-
-		public void SetCallbacks
-		(
-			Func<ushort, byte> ReadMemory,
-			Func<ushort, byte> DummyReadMemory,
-			Func<ushort, byte> PeekMemory,
-			Action<ushort, byte> WriteMemory
-		)
-		{
-			this.ReadMemory = ReadMemory;
-			this.DummyReadMemory = DummyReadMemory;
-			this.PeekMemory = PeekMemory;
-			this.WriteMemory = WriteMemory;
-		}
+		public long TotalExecutedCycles;
 
 		public ushort ReadWord(ushort address)
 		{
-			byte l = ReadMemory(address);
-			byte h = ReadMemory(++address);
+			byte l = _link.ReadMemory(address);
+			byte h = _link.ReadMemory(++address);
 			return (ushort)((h << 8) | l);
 		}
 
 		public ushort PeekWord(ushort address)
 		{
-			byte l = PeekMemory(address);
-			byte h = PeekMemory(++address);
+			byte l = _link.PeekMemory(address);
+			byte h = _link.PeekMemory(++address);
 			return (ushort)((h << 8) | l);
 		}
 
@@ -238,14 +227,14 @@ namespace BizHawk.Emulation.Cores.Components.M6502
 		{
 			byte l = (byte)(value & 0xFF);
 			byte h = (byte)(value >> 8);
-			WriteMemory(address, l);
-			WriteMemory(++address, h);
+			_link.WriteMemory(address, l);
+			_link.WriteMemory(++address, h);
 		}
 
 		private ushort ReadWordPageWrap(ushort address)
 		{
 			ushort highAddress = (ushort)((address & 0xFF00) + ((address + 1) & 0xFF));
-			return (ushort)(ReadMemory(address) | (ReadMemory(highAddress) << 8));
+			return (ushort)(_link.ReadMemory(address) | (_link.ReadMemory(highAddress) << 8));
 		}
 
 		// SO pin

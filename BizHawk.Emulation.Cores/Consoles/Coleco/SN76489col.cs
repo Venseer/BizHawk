@@ -3,12 +3,12 @@
 using BizHawk.Common;
 using BizHawk.Emulation.Common;
 using BizHawk.Common.NumberExtensions;
+using System;
 
 namespace BizHawk.Emulation.Cores.ColecoVision
 {
 	public sealed class SN76489col
 	{
-		public short[] _sampleBuffer = new short[4096];
 		private short current_sample;
 
 		public SN76489col()
@@ -23,8 +23,7 @@ namespace BizHawk.Emulation.Cores.ColecoVision
 		public bool vol_tone;
 		public bool noise_type;
 		public int noise_rate;
-
-		private int _sampleClock;
+		public bool noise_bit;
 
 		private int psg_clock;
 
@@ -45,19 +44,11 @@ namespace BizHawk.Emulation.Cores.ColecoVision
 
 			// reset the shift register
 			noise = 0x40000;
-
-			DiscardSamples();
 		}
 
-		public void DiscardSamples()
+		public int Sample()
 		{
-			_sampleClock = 0;
-		}
-
-		public void Sample()
-		{
-			_sampleBuffer[_sampleClock] = current_sample;
-			_sampleClock++;
+			return current_sample;
 		}
 
 		public void SyncState(Serializer ser)
@@ -76,14 +67,16 @@ namespace BizHawk.Emulation.Cores.ColecoVision
 			ser.Sync("Clock_B", ref clock_B);
 			ser.Sync("Clock_C", ref clock_C);
 			ser.Sync("noise_clock", ref noise_clock);
+			ser.Sync("noise_bit", ref noise_bit);
 
 			ser.Sync("psg_clock", ref psg_clock);
-			ser.Sync("sample_clock", ref _sampleClock);
 
 			ser.Sync("A_up", ref A_up);
 			ser.Sync("B_up", ref B_up);
 			ser.Sync("C_up", ref C_up);
 			ser.Sync("noise", ref noise);
+
+			ser.Sync("current_sample", ref current_sample);
 
 			ser.EndSection();
 		}
@@ -104,8 +97,7 @@ namespace BizHawk.Emulation.Cores.ColecoVision
 
 				if (vol_tone)
 				{
-					Chan_vol[chan_sel] &= 0xF0;
-					Chan_vol[chan_sel] |= (byte)(value & 0xF);
+					Chan_vol[chan_sel] = (byte)(value & 0xF);
 				}
 				else
 				{
@@ -128,8 +120,7 @@ namespace BizHawk.Emulation.Cores.ColecoVision
 			{
 				if (vol_tone)
 				{
-					Chan_vol[chan_sel] &= 0xF;
-					Chan_vol[chan_sel] |= (byte)((value & 0xF) << 4);
+					Chan_vol[chan_sel] = (byte)(value & 0xF);
 				}
 				else
 				{
@@ -165,15 +156,18 @@ namespace BizHawk.Emulation.Cores.ColecoVision
 					clock_A--;
 					clock_B--;
 					clock_C--;
+					noise_clock--;
 
 					// clock noise
 					if (noise_clock == 0)
 					{
+						noise_bit = noise.Bit(0);
 						if (noise_type)
 						{
 							int bit = (noise & 1) ^ ((noise >> 1) & 1);
 							noise = noise >> 1;
 							noise |= bit << 14;
+							
 						}
 						else
 						{
@@ -188,7 +182,7 @@ namespace BizHawk.Emulation.Cores.ColecoVision
 						}
 						else if (noise_rate == 1)
 						{
-							noise_clock = 0x120;
+							noise_clock = 0x20;
 						}
 						else if (noise_rate == 2)
 						{
@@ -197,7 +191,9 @@ namespace BizHawk.Emulation.Cores.ColecoVision
 						else
 						{
 							noise_clock = Chan_tone[2] + 1;
-						}					
+						}
+
+						noise_clock *= 2;					
 					}
 
 					
@@ -229,7 +225,7 @@ namespace BizHawk.Emulation.Cores.ColecoVision
 
 					v += (short)(C_up ? LogScale[Chan_vol[2]] * 42 : 0);
 
-					v += (short)(noise.Bit(0) ? LogScale[Chan_vol[3]] * 42 : 0);
+					v += (short)(noise_bit ? LogScale[Chan_vol[3]] * 42 : 0);
 
 					current_sample = (short)v;
 				}

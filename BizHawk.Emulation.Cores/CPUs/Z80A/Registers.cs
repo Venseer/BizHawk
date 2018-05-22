@@ -6,7 +6,6 @@ namespace BizHawk.Emulation.Cores.Components.Z80A
 	public partial class Z80A
 	{
 		// registers
-		// note these are not constants. When shadows are used, they will be changed accordingly
 		public ushort PCl = 0;
 		public ushort PCh = 1;
 		public ushort SPl = 2;
@@ -40,10 +39,13 @@ namespace BizHawk.Emulation.Cores.Components.Z80A
 		public ushort E_s = 29;
 		public ushort H_s = 30;
 		public ushort L_s = 31;
+		public ushort DB = 32;
 
 		public ushort[] Regs = new ushort[36];
 
 		public bool FlagI;
+
+		public bool FlagW; // wait flag, when set to true reads / writes will be delayed
 
 		public bool FlagC
 		{
@@ -109,6 +111,9 @@ namespace BizHawk.Emulation.Cores.Components.Z80A
 			{
 				Regs[i] = 0;
 			}
+
+			FlagI = false;
+			FlagW = false;
 		}
 
 		private bool[] TableParity;
@@ -125,8 +130,5 @@ namespace BizHawk.Emulation.Cores.Components.Z80A
 				TableParity[i] = (Bits & 1) == 0;
 			}
 		}
-
-
-
 	}
 }

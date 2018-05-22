@@ -4,8 +4,7 @@ namespace BizHawk.Emulation.Cores.Components.Z80A
 {
 	public partial class Z80A
 	{
-		private int totalExecutedCycles;
-		public int TotalExecutedCycles { get { return totalExecutedCycles; } set { totalExecutedCycles = value; } }
+		public long TotalExecutedCycles;
 
 		private int EI_pending;
 
@@ -19,6 +18,7 @@ namespace BizHawk.Emulation.Cores.Components.Z80A
 
 		// variables for executing instructions
 		public int instr_pntr = 0;
+		public ushort instr_swap;
 		public ushort[] cur_instr;
 		public int opcode;
 		public bool NO_prefix, CB_prefix, IX_prefix, EXTD_prefix, IY_prefix, IXCB_prefix, IYCB_prefix;

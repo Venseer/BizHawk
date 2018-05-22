@@ -695,12 +695,12 @@ namespace BizHawk.Client.EmuHawk
 
 		public void CloseEmulator()
 		{
-			_exit = true;
+			_exitRequestPending = true;
 		}
 
 		public void CloseEmulator(int exitCode)
 		{
-			_exit = true;
+			_exitRequestPending = true;
 			_exitCode = exitCode;
 		}
 
@@ -2451,11 +2451,47 @@ namespace BizHawk.Client.EmuHawk
 			new IntvControllerSettings().ShowDialog();
 		}
 
-		#endregion
+        #endregion
 
-		#region Help
+        #region ZXSpectrum
 
-		private void HelpSubMenu_DropDownOpened(object sender, EventArgs e)
+        private void zXSpectrumToolStripMenuItem_DropDownOpened(object sender, EventArgs e)
+        {
+
+        }
+
+        
+        private void preferencesToolStripMenuItem4_Click(object sender, EventArgs e)
+        {
+            GenericCoreConfig.DoDialog(this, "ZXSpectrum Settings");
+        }
+        
+
+        private void ZXSpectrumControllerConfigurationMenuItem_Click(object sender, EventArgs e)
+        {
+            new ZXSpectrumJoystickSettings().ShowDialog();
+        }
+
+        private void ZXSpectrumCoreEmulationSettingsMenuItem_Click(object sender, EventArgs e)
+        {
+            new ZXSpectrumCoreEmulationSettings().ShowDialog();
+        }
+
+        private void ZXSpectrumNonSyncSettingsMenuItem_Click(object sender, EventArgs e)
+        {
+            new ZXSpectrumNonSyncSettings().ShowDialog();
+        }
+
+        private void ZXSpectrumAudioSettingsMenuItem_Click(object sender, EventArgs e)
+        {
+            new ZXSpectrumAudioSettings().ShowDialog();
+        }
+
+        #endregion
+
+        #region Help
+
+        private void HelpSubMenu_DropDownOpened(object sender, EventArgs e)
 		{
 			FeaturesMenuItem.Visible = VersionInfo.DeveloperBuild;
 		}
@@ -2911,7 +2947,7 @@ namespace BizHawk.Client.EmuHawk
 
 		protected override void OnClosed(EventArgs e)
 		{
-			_exit = true;
+			_windowClosedAndSafeToExitProcess = true;
 			base.OnClosed(e);
 		}
 

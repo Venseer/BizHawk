@@ -51,7 +51,7 @@
     <PlatformTarget>AnyCPU</PlatformTarget>
     <UseVSHostingProcess>false</UseVSHostingProcess>
     <ErrorReport>prompt</ErrorReport>
-   <!--<CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>-->
+    <!--<CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>-->
     <CodeAnalysisRuleSet Condition=" '$(OS)' == 'Windows_NT' ">AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|AnyCPU'">
@@ -96,6 +96,7 @@
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
     </Reference>
     <Reference Include="System.DirectoryServices" />
+    <Reference Include="System.Net.Http" />
     <Reference Include="System.Numerics" />
     <Reference Include="System.Xaml" />
     <Reference Include="System.Xml.Linq">
@@ -197,6 +198,7 @@
     <Compile Include="BizBoxInfoControl.Designer.cs">
       <DependentUpon>BizBoxInfoControl.cs</DependentUpon>
     </Compile>
+    <Compile Include="Communication.cs" />
     <Compile Include="config\AnalogRangeConfig.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -500,6 +502,30 @@
     </Compile>
     <Compile Include="config\TI83\TI83PaletteConfig.Designer.cs">
       <DependentUpon>TI83PaletteConfig.cs</DependentUpon>
+    </Compile>
+    <Compile Include="config\ZXSpectrum\ZXSpectrumAudioSettings.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="config\ZXSpectrum\ZXSpectrumAudioSettings.Designer.cs">
+      <DependentUpon>ZXSpectrumAudioSettings.cs</DependentUpon>
+    </Compile>
+    <Compile Include="config\ZXSpectrum\ZXSpectrumNonSyncSettings.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="config\ZXSpectrum\ZXSpectrumNonSyncSettings.Designer.cs">
+      <DependentUpon>ZXSpectrumNonSyncSettings.cs</DependentUpon>
+    </Compile>
+    <Compile Include="config\ZXSpectrum\ZXSpectrumCoreEmulationSettings.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="config\ZXSpectrum\ZXSpectrumCoreEmulationSettings.Designer.cs">
+      <DependentUpon>ZXSpectrumCoreEmulationSettings.cs</DependentUpon>
+    </Compile>
+    <Compile Include="config\ZXSpectrum\ZXSpectrumJoystickSettings.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="config\ZXSpectrum\ZXSpectrumJoystickSettings.Designer.cs">
+      <DependentUpon>ZXSpectrumJoystickSettings.cs</DependentUpon>
     </Compile>
     <Compile Include="CoreFeatureAnalysis.cs">
       <SubType>Form</SubType>
@@ -877,6 +903,7 @@
       <DependentUpon>NewHexEditor.cs</DependentUpon>
     </Compile>
     <Compile Include="tools\Lua\Libraries\EmuLuaLibrary.Client.cs" />
+    <Compile Include="tools\Lua\Libraries\EmuLuaLibrary.Communication.cs" />
     <Compile Include="tools\Lua\Libraries\EmuLuaLibrary.Console.cs" />
     <Compile Include="tools\Lua\Libraries\EmuLuaLibrary.cs" />
     <Compile Include="tools\Lua\Libraries\EmuLuaLibrary.Forms.cs" />
@@ -1203,6 +1230,7 @@
     <Compile Include="tools\VirtualPads\schema\SnesSchema.cs" />
     <Compile Include="tools\VirtualPads\schema\VirtualBoySchema.cs" />
     <Compile Include="tools\VirtualPads\schema\WonderSwanSchema.cs" />
+    <Compile Include="tools\VirtualPads\schema\ZXSpectrumSchema.cs" />
     <Compile Include="tools\VirtualPads\VirtualPad.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -1399,6 +1427,18 @@
     </EmbeddedResource>
     <EmbeddedResource Include="config\TI83\TI83PaletteConfig.resx">
       <DependentUpon>TI83PaletteConfig.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="config\ZXSpectrum\ZXSpectrumAudioSettings.resx">
+      <DependentUpon>ZXSpectrumAudioSettings.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="config\ZXSpectrum\ZXSpectrumNonSyncSettings.resx">
+      <DependentUpon>ZXSpectrumNonSyncSettings.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="config\ZXSpectrum\ZXSpectrumCoreEmulationSettings.resx">
+      <DependentUpon>ZXSpectrumCoreEmulationSettings.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="config\ZXSpectrum\ZXSpectrumJoystickSettings.resx">
+      <DependentUpon>ZXSpectrumJoystickSettings.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="CoreFeatureAnalysis.resx">
       <DependentUpon>CoreFeatureAnalysis.cs</DependentUpon>
@@ -1791,6 +1831,7 @@
     <None Include="config\ControllerImages\GENController.png" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="Resources\ZXSpectrumKeyboard.bmp" />
     <None Include="images\WSW.png" />
     <None Include="images\WNW.png" />
     <None Include="images\SW.png" />
@@ -2115,6 +2156,7 @@
     <None Include="images\ENE.png" />
     <None Include="images\ESE.png" />
     <None Include="images\ControllerImages\NGPController.png" />
+    <Content Include="config\ControllerImages\ZXSpectrumKeyboards.png" />
     <Content Include="images\logo.ico" />
     <None Include="images\Paste.png" />
     <None Include="images\reboot.png" />
