@@ -1,3 +1,24 @@
+/******************************************************************************/
+/* Mednafen Sony PS1 Emulation Module                                         */
+/******************************************************************************/
+/* spu.h:
+**  Copyright (C) 2011-2016 Mednafen Team
+**
+** This program is free software; you can redistribute it and/or
+** modify it under the terms of the GNU General Public License
+** as published by the Free Software Foundation; either version 2
+** of the License, or (at your option) any later version.
+**
+** This program is distributed in the hope that it will be useful,
+** but WITHOUT ANY WARRANTY; without even the implied warranty of
+** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+** GNU General Public License for more details.
+**
+** You should have received a copy of the GNU General Public License
+** along with this program; if not, write to the Free Software Foundation, Inc.,
+** 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+*/
+
 #ifndef __MDFN_PSX_SPU_H
 #define __MDFN_PSX_SPU_H
 
@@ -198,28 +219,17 @@ void RunReverb(const int32* in, int32* out);
      int16 IIR_COEF;
      int16 FB_ALPHA;
      int16 FB_X;
-     uint16 IIR_DEST_A0;
-     uint16 IIR_DEST_A1;
-     uint16 ACC_SRC_A0;
-     uint16 ACC_SRC_A1;
-     uint16 ACC_SRC_B0;
-     uint16 ACC_SRC_B1;
-     uint16 IIR_SRC_A0;
-     uint16 IIR_SRC_A1;
-     uint16 IIR_DEST_B0;
-     uint16 IIR_DEST_B1;
-     uint16 ACC_SRC_C0;
-     uint16 ACC_SRC_C1;
-     uint16 ACC_SRC_D0;
-     uint16 ACC_SRC_D1;
-     uint16 IIR_SRC_B1;
-     uint16 IIR_SRC_B0;
-     uint16 MIX_DEST_A0;
-     uint16 MIX_DEST_A1;
-     uint16 MIX_DEST_B0;
-     uint16 MIX_DEST_B1;
-     int16 IN_COEF_L;
-     int16 IN_COEF_R;
+     uint16 IIR_DEST_A[2];
+     uint16 ACC_SRC_A[2];
+     uint16 ACC_SRC_B[2];
+     uint16 IIR_SRC_A[2];
+     uint16 IIR_DEST_B[2];
+     uint16 ACC_SRC_C[2];
+     uint16 ACC_SRC_D[2];
+     uint16 IIR_SRC_B[2];
+     uint16 MIX_DEST_A[2];
+     uint16 MIX_DEST_B[2];
+     int16 IN_COEF[2];
     };
    };
   };

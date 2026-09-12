@@ -15,7 +15,11 @@ void operator delete(void *p)
 	std::free(p);
 }
 
+#ifdef _WIN32
 #define EXPORT extern "C" __declspec(dllexport)
+#else
+#define EXPORT extern "C" __attribute__((visibility("default")))
+#endif
 
 EXPORT CSystem *Create(const uint8 *game, uint32 gamesize, const uint8 *bios, uint32 biossize, int pagesize0, int pagesize1, int lowpass)
 {

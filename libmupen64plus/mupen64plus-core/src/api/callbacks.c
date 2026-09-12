@@ -53,18 +53,33 @@ m64p_error SetStateCallback(ptr_StateCallback pFunc, void *Context)
 
 void DebugMessage(int level, const char *message, ...)
 {
-  char msgbuf[256];
-  va_list args;
+    char msgbuf[256];
+    va_list args;
+    extern HANDLE rompausesem;
+    int new_vi();
 
-  if (pDebugFunc == NULL)
-      return;
+    if(level == M64MSG_ERROR)
+    {
+        //trigger a vsync just to get out of frame advance
+        new_vi();
+        WaitForSingleObject(rompausesem, INFINITE);
+    }
 
-  va_start(args, message);
-  vsprintf(msgbuf, message, args);
+    if (pDebugFunc == NULL)
+    {
+        va_start(args, message);
+        vprintf(message, args);
+        printf("\n");
+        va_end(args);
+        return;
+    }
 
-  (*pDebugFunc)(DebugContext, level, msgbuf);
+    va_start(args, message);
+    vsprintf(msgbuf, message, args);
 
-  va_end(args);
+    (*pDebugFunc)(DebugContext, level, msgbuf);
+
+    va_end(args);
 }
 
 void StateChanged(m64p_core_param param_type, int new_value)

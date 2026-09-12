@@ -1,17 +1,16 @@
-
-/snes9xgit
-
-svnrev.cs
-.vs/**
-**/bin/**
-**/obj/**
+**/.vs/**
+**/.vscode/
 /output/**
-/output64/**
-**/Release/**
-**/Debug/**
+/packaged_output
+/result*
+/test_output
 **/ipch/**
+/Assets/dll/*.wbx
+Backup/
+UpgradeLog.htm
 
 *.ilk
+*.il
 *.tlog
 *.obj
 *.o
@@ -19,36 +18,12 @@ svnrev.cs
 *.filters
 *.opendb
 
-/BizHawk.Client.EmuHawk/tools/TAStudio/HistoryBox.Designer.cs
-/BizHawk.Client.EmuHawk/tools/TAStudio/HistoryBox.cs
-/BizHawk.Client.EmuHawk/tools/TAStudio/HistoryBox.resx
-
-
-/BizHawk.Emulation.DiscSystem/Properties/svnrev.cs
-
-
-
-/Build/*.vshost.*
-
 /Dist/*.zip
+/Dist/git_hooks/*.local.ps1
 
-/LuaInterface/LuaInterface/Properties
-/Version/bin
-/Version/obj
-/Version/svnrev.cs
-/attic/PsxHawk.API/Release
-/attic/PsxHawk.Core/Debug
-/attic/PsxHawk.Core/Release
-/genplus-gx/libretro/msvc/ipch
-
-/libmupen64plus/mupen64plus-video-z64/projects/msvc11/snes9xgit
+# mupen64plus-win32-deps is a submodule, so ignores should be in that repo
 /libmupen64plus/mupen64plus-win32-deps/SDL-1.2.14/docs
 /libmupen64plus/mupen64plus-win32-deps/SDL-1.2.14/docs.html
-
-/libsnes/vs2015/.vs
-/libsnes/vs2015/.obj
-
-/References/*.xml
 
 *.opensdf
 *.user
@@ -60,16 +35,16 @@ svnrev.cs
 .hgignore
 .hgtags
 
-/LuaInterface/Lua/src/.libs
-/LuaInterface/Lua/src/Release-LUAPERKS
-/LuaInterface/Release-LUAPERKS
-
-ExternalCoreProjects/Virtu/bin/*.*
 /psx/octoshock/bizhawk/Win32
 /psx/octoshock/bizhawk/x64
 /psx/octoshock/bizhawk/*.opendb
 
 **/StyleCop.Cache
-libsnes/vs2015/libsnes.VC.db
-waterbox/**/*.wbx
-waterbox/**/*.wbx.in
+/waterbox/**/*.wbx
+/waterbox/**/*.wbx.in
+
+.idea
+
+/packages
+
+launchSettings.json

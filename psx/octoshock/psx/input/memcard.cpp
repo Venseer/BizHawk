@@ -1,19 +1,23 @@
-/* Mednafen - Multi-system Emulator
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- */
+/******************************************************************************/
+/* Mednafen Sony PS1 Emulation Module                                         */
+/******************************************************************************/
+/* memcard.cpp:
+**  Copyright (C) 2012-2016 Mednafen Team
+**
+** This program is free software; you can redistribute it and/or
+** modify it under the terms of the GNU General Public License
+** as published by the Free Software Foundation; either version 2
+** of the License, or (at your option) any later version.
+**
+** This program is distributed in the hope that it will be useful,
+** but WITHOUT ANY WARRANTY; without even the implied warranty of
+** MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+** GNU General Public License for more details.
+**
+** You should have received a copy of the GNU General Public License
+** along with this program; if not, write to the Free Software Foundation, Inc.,
+** 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+*/
 
 // I could find no other commands than 'R', 'W', and 'S' (not sure what 'S' is for, however)
 
@@ -143,25 +147,21 @@ InputDevice_Memcard::~InputDevice_Memcard()
 
 void InputDevice_Memcard::Power(void)
 {
+ presence_new = true;
+ memset(rw_buffer, 0, sizeof(rw_buffer));
+ write_xor = 0;
+
  dtr = 0;
-
- //buttons[0] = buttons[1] = 0;
-
  command_phase = 0;
-
  bitpos = 0;
-
  receive_buffer = 0;
 
  command = 0;
+ addr = 0;
+ calced_xor = 0;
 
  transmit_buffer = 0;
-
  transmit_count = 0;
-
- addr = 0;
-
- presence_new = true;
 }
 
 void InputDevice_Memcard::SyncState(bool isReader, EW::NewState *ns)

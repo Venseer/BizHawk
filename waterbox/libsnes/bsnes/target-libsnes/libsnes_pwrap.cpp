@@ -109,10 +109,8 @@ enum eStatus : int32
 #endif
 struct CPURegsComm {
 	u32 pc;
-	u16 a, x, y, z, s, d, vector; //7x
-	u8 p, nothing;
-	u32 aa, rd;
-	u8 sp, dp, db, mdr;
+	u16 a, x, y, s, d, vector; //6x
+	u8 p, db, nothing, nothing2;
 	u16 v, h;
 }
 #ifndef _MSC_VER
@@ -165,8 +163,8 @@ struct CommStruct
 
 	int32 padding3;
 
-	int64 cdl_ptr[4];
-	int32 cdl_size[4];
+	int64 cdl_ptr[16];
+	int32 cdl_size[16];
 
 	CPURegsComm cpuregs;
 	LayerEnablesComm layerEnables;
@@ -174,6 +172,7 @@ struct CommStruct
 	//static configuration-type information which can be grabbed off the core at any time without even needing a QUERY command
 	uint32 region;
 	uint32 mapper;
+	uint32 BLANKO;
 
 	//===========================================================
 
@@ -298,10 +297,7 @@ void* snes_allocSharedMemory(const char* memtype, size_t amt)
 
 	void* ret;
 
-	if (strcmp(memtype, "CARTRIDGE_ROM") == 0)
-		ret = alloc_sealed(amt);
-	else
-		ret = alloc_plain(amt);
+	ret = alloc_plain(amt);
 
 	comm.str = (char*)memtype;
 	comm.size = amt;
@@ -414,6 +410,7 @@ void CMD_LoadCartridgeSGB()
 
 void CMD_init()
 {
+	SNES::config.random = !!comm.value;
 	snes_init();
 
 	SNES::input.connect(SNES::Controller::Port1, comm.inports[0]);
@@ -524,23 +521,18 @@ void QUERY_peek_cpu_regs() {
 	comm.cpuregs.a = SNES::cpu.regs.a;
 	comm.cpuregs.x = SNES::cpu.regs.x;
 	comm.cpuregs.y = SNES::cpu.regs.y;
-	comm.cpuregs.z = SNES::cpu.regs.z;
 	comm.cpuregs.s = SNES::cpu.regs.s;
 	comm.cpuregs.d = SNES::cpu.regs.d;
-	comm.cpuregs.aa = (u32)SNES::cpu.aa;
-	comm.cpuregs.rd = (u32)SNES::cpu.rd;
-	comm.cpuregs.sp = SNES::cpu.sp;
-	comm.cpuregs.dp = SNES::cpu.dp;
 	comm.cpuregs.db = SNES::cpu.regs.db;
-	comm.cpuregs.mdr = SNES::cpu.regs.mdr;
 	comm.cpuregs.vector = SNES::cpu.regs.vector;
 	comm.cpuregs.p = SNES::cpu.regs.p;
 	comm.cpuregs.nothing = 0;
+	comm.cpuregs.nothing2 = 0;
 	comm.cpuregs.v = SNES::cpu.vcounter();
 	comm.cpuregs.h = SNES::cpu.hdot();
 }
 void QUERY_peek_set_cdl() {
-	for (int i = 0; i<eCDLog_AddrType_NUM; i++)
+	for (int i = 0; i<16; i++)
 	{
 		cdlInfo.blocks[i] = (uint8*)comm.cdl_ptr[i];
 		cdlInfo.blockSizes[i] = comm.cdl_size[i];
@@ -605,9 +597,8 @@ void new_emuthread()
 //DLL INTERFACE
 
 #include <emulibc.h>
-#define EXPORT extern "C" ECL_EXPORT
 
-EXPORT void* DllInit()
+ECL_EXPORT void* DllInit()
 {
 	#define T(s,n) static_assert(offsetof(CommStruct,s)==n,#n)
 	T(cmd, 0);
@@ -623,13 +614,14 @@ EXPORT void* DllInit()
 	T(buf, 88);
 	T(buf_size, 112);
 	T(cdl_ptr, 128);
-	T(cdl_size, 160);
-	T(cpuregs, 176);
-	T(layerEnables, 212);
-	T(region, 224);
-	T(mapper, 228);
+	T(cdl_size, 256);
+	T(cpuregs, 320);
+	T(layerEnables, 344);
+	T(region, 356);
+	T(mapper, 360);
+	T(BLANKO, 364);
 	// start of private stuff
-	T(privbuf, 232);
+	T(privbuf, 368);
 	#undef T
 
 	memset(&comm, 0, sizeof(comm));
@@ -647,7 +639,7 @@ EXPORT void* DllInit()
 	return &comm;
 }
 
-EXPORT void Message(eMessage msg)
+ECL_EXPORT void Message(eMessage msg)
 {
 	if (msg == eMessage_Resume)
 	{
@@ -686,18 +678,18 @@ EXPORT void Message(eMessage msg)
 
 
 //receives the given buffer and COPIES it. use this for returning values from SIGs
-EXPORT void CopyBuffer(int id, void* ptr, int32 size)
+ECL_EXPORT void CopyBuffer(int id, void* ptr, int32 size)
 {
 	comm.CopyBuffer(id, ptr, size);
 }
 
 //receives the given buffer and STASHES IT. use this (carefully) for sending params for CMDs
-EXPORT void SetBuffer(int id, void* ptr, int32 size)
+ECL_EXPORT void SetBuffer(int id, void* ptr, int32 size)
 {
 	comm.SetBuffer(id, ptr, size);
 }
 
-EXPORT void PostLoadState()
+ECL_EXPORT void PostLoadState()
 {
 	SNES::ppu.flush_tiledata_cache();
 }

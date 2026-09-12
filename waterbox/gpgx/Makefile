@@ -1,42 +1,94 @@
-CC = x86_64-nt64-midipix-gcc
+GPGX_DIR := Genesis-Plus-GX
 
-CCFLAGS:=-Icore -Iutil -Icore/m68k -Icore/z80 -Icore/input_hw \
-	-Icore/cart_hw -Icore/cart_hw/svp -Icore/sound -Icore/ntsc -Icore/cd_hw \
-	-I../emulibc \
+CCFLAGS := \
+	-Iutil \
+	-I${GPGX_DIR}/core \
+	-I${GPGX_DIR}/core/cart_hw \
+	-I${GPGX_DIR}/core/cart_hw/svp \
+	-I${GPGX_DIR}/core/cd_hw \
+	-I${GPGX_DIR}/core/debug \
+	-I${GPGX_DIR}/core/input_hw \
+	-I${GPGX_DIR}/core/m68k \
+	-I${GPGX_DIR}/core/ntsc \
+	-I${GPGX_DIR}/core/sound \
+	-I${GPGX_DIR}/core/sound/minimp3 \
+	-I${GPGX_DIR}/core/z80 \
+	-Icinterface \
+	-Iutil \
 	-Wall -Werror=pointer-to-int-cast -Werror=int-to-pointer-cast -Werror=implicit-function-declaration \
-	-std=c99 -fomit-frame-pointer -fvisibility=hidden \
-	-DLSB_FIRST -DUSE_32BPP_RENDERING -DINLINE=static\ __inline__ \
-	-O3 -flto
+	-std=c99 -fomit-frame-pointer -Wfatal-errors \
+	-DUSE_BIZHAWK_CALLBACKS \
+	-DHAVE_YM3438_CORE \
+	-DHAVE_OPLL_CORE \
+	-DUSE_RAM_DEEPFREEZE \
+	-DLSB_FIRST \
+	-DUSE_32BPP_RENDERING \
+	-DHOOK_CPU \
+	-DINLINE=static\ __inline__ \
+	-DcdStream=cdStream \
+	-DMAXROMSIZE=33554432 \
+	-fcommon
 
-TARGET = gpgx.wbx
+LDFLAGS :=
 
-LDFLAGS = -Wl,--dynamicbase,--export-all-symbols
+TARGET := gpgx.wbx
 
-ROOT_DIR:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
-SRCS:=$(shell find $(ROOT_DIR) -type f -name '*.c')
-OBJ_DIR:=$(ROOT_DIR)/obj
+SRCS = \
+	$(GPGX_DIR)/core/cart_hw/areplay.c \
+	$(GPGX_DIR)/core/cart_hw/eeprom_93c.c \
+	$(GPGX_DIR)/core/cart_hw/eeprom_i2c.c \
+	$(GPGX_DIR)/core/cart_hw/eeprom_spi.c \
+	$(GPGX_DIR)/core/cart_hw/flash_cfi.c \
+	$(GPGX_DIR)/core/cart_hw/ggenie.c \
+	$(GPGX_DIR)/core/cart_hw/md_cart.c \
+	$(GPGX_DIR)/core/cart_hw/megasd.c \
+	$(GPGX_DIR)/core/cart_hw/sms_cart.c \
+	$(GPGX_DIR)/core/cart_hw/sram.c \
+	$(GPGX_DIR)/core/cart_hw/svp/ssp16.c \
+	$(GPGX_DIR)/core/cart_hw/svp/svp.c \
+	$(GPGX_DIR)/core/cart_hw/yx5200.c \
+	$(GPGX_DIR)/core/cd_hw/cd_cart.c \
+	$(GPGX_DIR)/core/cd_hw/cdc.c \
+	$(GPGX_DIR)/core/cd_hw/cdd.c \
+	$(GPGX_DIR)/core/cd_hw/gfx.c \
+	$(GPGX_DIR)/core/cd_hw/pcm.c \
+	$(GPGX_DIR)/core/cd_hw/scd.c \
+	$(GPGX_DIR)/core/debug/cpuhook.c \
+	$(GPGX_DIR)/core/genesis.c \
+	$(GPGX_DIR)/core/input_hw/activator.c \
+	$(GPGX_DIR)/core/input_hw/gamepad.c \
+	$(GPGX_DIR)/core/input_hw/graphic_board.c \
+	$(GPGX_DIR)/core/input_hw/input.c \
+	$(GPGX_DIR)/core/input_hw/lightgun.c \
+	$(GPGX_DIR)/core/input_hw/mouse.c \
+	$(GPGX_DIR)/core/input_hw/paddle.c \
+	$(GPGX_DIR)/core/input_hw/sportspad.c \
+	$(GPGX_DIR)/core/input_hw/terebi_oekaki.c \
+	$(GPGX_DIR)/core/input_hw/teamplayer.c \
+	$(GPGX_DIR)/core/input_hw/xe_1ap.c \
+	$(GPGX_DIR)/core/io_ctrl.c \
+	$(GPGX_DIR)/core/loadrom.c \
+	$(GPGX_DIR)/core/m68k/m68kcpu.c \
+	$(GPGX_DIR)/core/m68k/s68kcpu.c \
+	$(GPGX_DIR)/core/mem68k.c \
+	$(GPGX_DIR)/core/membnk.c \
+	$(GPGX_DIR)/core/memz80.c \
+	$(GPGX_DIR)/core/ntsc/md_ntsc.c \
+	$(GPGX_DIR)/core/ntsc/sms_ntsc.c \
+	$(GPGX_DIR)/core/sound/blip_buf.c \
+	$(GPGX_DIR)/core/sound/eq.c \
+	$(GPGX_DIR)/core/sound/opll.c \
+	$(GPGX_DIR)/core/sound/psg.c \
+	$(GPGX_DIR)/core/sound/sound.c \
+	$(GPGX_DIR)/core/sound/ym2413.c \
+	$(GPGX_DIR)/core/sound/ym2612.c \
+	$(GPGX_DIR)/core/sound/ym3438.c \
+	$(GPGX_DIR)/core/system.c \
+	$(GPGX_DIR)/core/vdp_ctrl.c \
+	$(GPGX_DIR)/core/vdp_render.c \
+	$(GPGX_DIR)/core/z80/z80.c \
+	cinterface/cdStreamImpl.c \
+	cinterface/cinterface.c \
+	util/scrc32.c
 
-_OBJS:=$(SRCS:.c=.o)
-OBJS:=$(patsubst $(ROOT_DIR)%,$(OBJ_DIR)%,$(_OBJS))
-
-$(OBJ_DIR)/%.o: %.c
-	@mkdir -p $(@D)
-	@$(CC) -c -o $@ $< $(CCFLAGS)
-
-all: $(TARGET)
-
-.PHONY: clean all
-
-$(TARGET).in: $(OBJS)
-	@$(CC) -o $@ $(LDFLAGS) $(CCFLAGS) $(OBJS) ../emulibc/libemuhost.so
-
-$(TARGET): $(TARGET).in
-	strip $< -o $@ -R /4 -R /14 -R /29 -R /41 -R /55 -R /67 -R /78 -R /89 -R /104
-
-clean:
-	rm -rf $(OBJ_DIR)
-	rm -f $(TARGET).in
-	rm -f $(TARGET)
-
-#install:
-#	$(CP) $(TARGET) $(DEST_$(ARCH))
+include ../common.mak

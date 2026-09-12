@@ -1,12 +1,28 @@
+local START_FRAME = 0;
+local CORNER = "topright";
+local OFFSET_X = 0;
+local OFFSET_Y = 0;
+
 while true do
 	if (movie.isloaded()) then
-		fps = movie.getfps();
-		frames = movie.length();
-		tseconds = (frames / fps)
+		if movie.getheader()["Core"] == "Gambatte" then
+			clockrate = 2 ^ 21;
+			cycles = emu.totalexecutedcycles();
+			tseconds = (cycles / clockrate);
+		elseif movie.getheader()["Core"] == "SubGBHawk" then
+			clockrate = 2 ^ 22;
+			cycles = emu.totalexecutedcycles();
+			tseconds = (cycles / clockrate);
+		else
+			fps = movie.getfps();
+			frames = emu.framecount();
+			frames = frames < START_FRAME and 0 or (frames - START_FRAME);
+			tseconds = (frames / fps);
+		end
 		secondsraw = tseconds % 60;
 		shift = 10 ^ 2;
 		seconds = math.floor((secondsraw * shift) + 0.5) / shift;
-		secondsstr = string.format("%.2f", seconds)
+		secondsstr = string.format("%.2f", seconds);
 		if (seconds < 10) then
 			secondsstr = "0" .. secondsstr;
 		end
@@ -23,7 +39,7 @@ while true do
 		if (hours > 0) then
 			time = "0" .. hours .. ":" .. time;
 		end
-		gui.text(0, 0, time, null, null, 1);
+		gui.text(OFFSET_X, OFFSET_Y, time, nil, CORNER);
 	end
 	emu.frameadvance();
 end
